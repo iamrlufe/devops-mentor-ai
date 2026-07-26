@@ -22,9 +22,9 @@ venv/
 # Database
 *.db
 
-# Docker
-postgres_data/
-qdrant_data/
+# Docker volumes
+docker/postgres/
+docker/qdrant/
 
 # Tests
 .pytest_cache/
