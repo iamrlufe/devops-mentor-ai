@@ -14,6 +14,7 @@ docker/
 
 .vscode/
 .idea/
+.claude/
 
 README.md
 docker-compose.yml

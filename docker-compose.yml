@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17
+    image: postgres:17.10
     container_name: mentor-postgres
     restart: unless-stopped
 
@@ -16,7 +16,7 @@ services:
       - ./docker/postgres:/var/lib/postgresql/data
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.18.3
     container_name: mentor-qdrant
     restart: unless-stopped
 
@@ -46,6 +46,11 @@ services:
     # reachable by its service name, not on localhost.
     environment:
       QDRANT_URL: http://qdrant:6333
+
+    # The documentation is data, not code: it is mounted instead of being baked
+    # into the image, so indexing new files needs no rebuild.
+    volumes:
+      - ./docs:/app/docs:ro
 
   telegram-bot:
     build: .
