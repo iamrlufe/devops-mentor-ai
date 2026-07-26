@@ -1,0 +1,14 @@
+from typing import ClassVar
+
+from app.agents.conversational import ConversationalAgent
+from app.agents.registry import AgentRegistry
+
+
+@AgentRegistry.register("architecture")
+class ArchitectureAgent(ConversationalAgent):
+    """System design and architecture decisions."""
+
+    name: ClassVar[str] = "architecture"
+    description: ClassVar[str] = "System design and architecture decisions"
+    capabilities: ClassVar[tuple[str, ...]] = ("design", "architecture")
+    prompt_file: ClassVar[str] = "architecture.md"

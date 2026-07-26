@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from app.config import settings
 from app.models.chat_message import ChatMessage
 from app.providers.base import NOT_IMPLEMENTED_MESSAGE, BaseProvider
@@ -11,6 +13,8 @@ class OllamaProvider(BaseProvider):
     The configuration is wired and the provider is selectable, but the request
     to the runtime is not implemented yet.
     """
+
+    capabilities: ClassVar[tuple[str, ...]] = ("chat", "local", "embedding")
 
     def __init__(self) -> None:
         self.base_url = settings.ollama_base_url

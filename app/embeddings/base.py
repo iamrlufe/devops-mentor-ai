@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
 
 class EmbeddingProvider(ABC):
+
+    #: What the provider can do, for example "text", "local".
+    capabilities: ClassVar[tuple[str, ...]] = ()
 
     @abstractmethod
     def embed(self, texts: list[str]) -> list[list[float]]:

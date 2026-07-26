@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import ClassVar
 
 from app.models.chat_message import ChatMessage
 
@@ -16,6 +17,10 @@ class BaseProvider(ABC):
     into the wire format of a concrete API is the job of the implementation,
     so a new provider never changes the agent, the prompt builder or the memory.
     """
+
+    #: What the provider can do, for example "chat", "vision", "reasoning".
+    #: A future coordinator uses it to route a request to a capable provider.
+    capabilities: ClassVar[tuple[str, ...]] = ()
 
     @abstractmethod
     def generate(self, messages: list[ChatMessage]) -> str:

@@ -1,11 +1,13 @@
 from app.memory.base import MemoryProvider
 from app.memory.models import Message
+from app.memory.registry import MemoryRegistry
 
 
+@MemoryRegistry.register("in_memory")
 class InMemoryMemoryProvider(MemoryProvider):
     """Keeps the history in the process memory. It is lost on restart."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._history: dict[str, list[Message]] = {}
 
     def load(self, chat_id: str) -> list[Message]:

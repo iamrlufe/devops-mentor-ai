@@ -1,17 +1,23 @@
+from typing import ClassVar
+
 from google import genai
 from google.genai import errors, types
 
 from app.config import settings
 from app.embeddings.base import EmbeddingProvider
+from app.embeddings.registry import EmbeddingRegistry
 
 BATCH_SIZE = 100
 DOCUMENT_TASK_TYPE = "RETRIEVAL_DOCUMENT"
 QUERY_TASK_TYPE = "RETRIEVAL_QUERY"
 
 
+@EmbeddingRegistry.register("gemini")
 class GeminiEmbeddingProvider(EmbeddingProvider):
 
-    def __init__(self):
+    capabilities: ClassVar[tuple[str, ...]] = ("text", "retrieval_task_types")
+
+    def __init__(self) -> None:
         api_key = settings.gemini_api_key
         if not api_key:
             raise RuntimeError(

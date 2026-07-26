@@ -1,12 +1,14 @@
 from app.embeddings.factory import EmbeddingFactory
 from app.rag.base import Retriever
 from app.rag.models import Document
+from app.rag.registry import RetrieverRegistry
 from app.vectorstore.models import SearchResult
 from app.vectorstore.service import VectorStoreService
 
 TEXT_KEY = "text"
 
 
+@RetrieverRegistry.register("qdrant")
 class QdrantRetriever(Retriever):
     """Searches the indexed chunks by the meaning of the query."""
 

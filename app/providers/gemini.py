@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from google import genai
 from google.genai import errors, types
 
@@ -24,6 +26,14 @@ class GeminiProvider(BaseProvider):
     Gemini has no `system` role in the conversation, so system messages are
     merged into the system instruction and the rest becomes the contents.
     """
+
+    capabilities: ClassVar[tuple[str, ...]] = (
+        "chat",
+        "vision",
+        "files",
+        "json",
+        "reasoning",
+    )
 
     def __init__(self) -> None:
         api_key = settings.gemini_api_key

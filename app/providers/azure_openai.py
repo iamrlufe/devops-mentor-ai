@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from app.config import settings
 from app.models.chat_message import ChatMessage
 from app.providers.base import NOT_IMPLEMENTED_MESSAGE, BaseProvider
@@ -11,6 +13,8 @@ class AzureOpenAIProvider(BaseProvider):
     The configuration is wired and the provider is selectable, but the request
     to the API is not implemented yet.
     """
+
+    capabilities: ClassVar[tuple[str, ...]] = ("chat", "vision", "embedding")
 
     def __init__(self) -> None:
         self.api_key = settings.azure_openai_api_key
