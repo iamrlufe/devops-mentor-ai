@@ -41,3 +41,15 @@ services:
 
     env_file:
       - .env
+
+  telegram-bot:
+    build: .
+    container_name: mentor-telegram-bot
+    restart: unless-stopped
+    command: python -m bot.main
+
+    depends_on:
+      - api
+
+    env_file:
+      - .env
