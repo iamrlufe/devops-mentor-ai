@@ -1,5 +1,5 @@
 from app.rag.base import Retriever
-from app.rag.empty import EmptyRetriever
+from app.rag.qdrant_retriever import QdrantRetriever
 
 
 class RetrieverFactory:
@@ -9,6 +9,6 @@ class RetrieverFactory:
     def create() -> Retriever:
         """Return the retriever shared by the whole process."""
         if RetrieverFactory._retriever is None:
-            RetrieverFactory._retriever = EmptyRetriever()
+            RetrieverFactory._retriever = QdrantRetriever()
 
         return RetrieverFactory._retriever
