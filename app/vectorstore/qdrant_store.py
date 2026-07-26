@@ -91,7 +91,8 @@ class QdrantVectorStore(VectorStore):
         )
 
     def _check_vector_size(self, vector_size: int) -> None:
-        """Guard against writing vectors of another model into an existing collection."""
+        """Guard against writing vectors of another model into an existing
+        collection."""
         config = self.client.get_collection(self.collection_name).config
         existing_size = config.params.vectors.size
 

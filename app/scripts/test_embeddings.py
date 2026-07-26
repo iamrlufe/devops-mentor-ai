@@ -15,7 +15,10 @@ CHUNKS = [
     Chunk(
         id="kubernetes-0001",
         document_id="kubernetes",
-        text="A Kubernetes Deployment keeps the declared number of pod replicas running.",
+        text=(
+            "A Kubernetes Deployment keeps the declared number of pod "
+            "replicas running."
+        ),
         order=1,
         metadata={"title": "Deployments", "source": "docs/kubernetes.md"},
     ),

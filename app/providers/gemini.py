@@ -9,6 +9,7 @@ from app.models.chat_message import (
     ChatMessage,
 )
 from app.providers.base import BaseProvider
+from app.providers.registry import ProviderRegistry
 
 GEMINI_ROLES = {
     ROLE_USER: "user",
@@ -16,9 +17,15 @@ GEMINI_ROLES = {
 }
 
 
+@ProviderRegistry.register("gemini")
 class GeminiProvider(BaseProvider):
+    """Google Gemini through the official GenAI SDK.
 
-    def __init__(self):
+    Gemini has no `system` role in the conversation, so system messages are
+    merged into the system instruction and the rest becomes the contents.
+    """
+
+    def __init__(self) -> None:
         api_key = settings.gemini_api_key
         if not api_key:
             raise RuntimeError(
@@ -30,6 +37,7 @@ class GeminiProvider(BaseProvider):
         self.client = genai.Client(api_key=api_key)
 
     def generate(self, messages: list[ChatMessage]) -> str:
+        """Return the answer of Gemini to the given conversation."""
         system_instruction, contents = self._to_gemini_format(messages)
 
         try:

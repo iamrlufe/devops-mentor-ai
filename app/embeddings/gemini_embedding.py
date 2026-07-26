@@ -37,7 +37,8 @@ class GeminiEmbeddingProvider(EmbeddingProvider):
 
         vectors: list[list[float]] = []
         for start in range(0, len(texts), BATCH_SIZE):
-            vectors.extend(self._embed_batch(texts[start:start + BATCH_SIZE], task_type))
+            batch = texts[start:start + BATCH_SIZE]
+            vectors.extend(self._embed_batch(batch, task_type))
 
         return vectors
 

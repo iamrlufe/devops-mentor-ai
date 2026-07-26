@@ -23,7 +23,10 @@ DOCUMENTS = [
         metadata={
             "title": "Docker",
             "source": "docs/demo/Docker.md",
-            "text": "Docker builds an image from a Dockerfile with `docker build -t app .`",
+            "text": (
+                "Docker builds an image from a Dockerfile "
+                "with `docker build -t app .`"
+            ),
         },
         score=0.7040,
     ),

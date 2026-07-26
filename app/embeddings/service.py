@@ -25,5 +25,5 @@ class EmbeddingService:
                 vector=vector,
                 metadata=dict(chunk.metadata),
             )
-            for chunk, vector in zip(chunks, vectors)
+            for chunk, vector in zip(chunks, vectors, strict=True)
         ]

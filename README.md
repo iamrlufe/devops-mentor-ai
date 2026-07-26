@@ -26,8 +26,8 @@ found for each question and passed to the model as context.
   provider-independent message list.
 - **Document Indexing** — one command turns a directory of markdown into a
   searchable index: load, chunk, embed, upload.
-- **Multiple LLM Providers** — provider selection through `ProviderFactory` and
-  the `LLM_PROVIDER` setting.
+- **Multiple LLM Providers** — a registry maps `LLM_PROVIDER` to a provider
+  class; seven are registered and a new one is a single new file.
 - **Docker Deployment** — the whole stack starts with a single compose command.
 
 ## Architecture
@@ -111,8 +111,15 @@ devops-mentor-ai/
 │   │   └── teacher.md            # system prompt
 │   ├── providers/                # LLM providers
 │   │   ├── base.py               # BaseProvider interface
-│   │   ├── factory.py            # ProviderFactory
-│   │   └── gemini.py             # Gemini implementation
+│   │   ├── registry.py           # ProviderRegistry: name -> class
+│   │   ├── factory.py            # ProviderFactory, builds the configured one
+│   │   ├── gemini.py             # implemented
+│   │   ├── openai.py             # registered, generate() not implemented
+│   │   ├── claude.py             # registered, generate() not implemented
+│   │   ├── groq.py               # registered, generate() not implemented
+│   │   ├── ollama.py             # registered, generate() not implemented
+│   │   ├── openrouter.py         # registered, generate() not implemented
+│   │   └── azure_openai.py       # registered, generate() not implemented
 │   ├── rag/                      # retrieval
 │   │   ├── base.py               # Retriever interface
 │   │   ├── context_builder.py    # renders documents into a context block
@@ -141,6 +148,7 @@ devops-mentor-ai/
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
+├── LICENSE
 └── .env.example
 ```
 
@@ -189,8 +197,8 @@ mean to change them.
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `LLM_PROVIDER` | Which provider to build | `gemini` |
-| `GEMINI_API_KEY` | Gemini API key. Required | — |
+| `LLM_PROVIDER` | Which provider to build. See [Supported Providers](#supported-providers) | `gemini` |
+| `GEMINI_API_KEY` | Gemini API key. Required for the implemented provider | — |
 | `GEMINI_MODEL` | Model used for answers | `gemini-2.5-flash` |
 | `GEMINI_EMBEDDING_MODEL` | Model used for embeddings | `gemini-embedding-001` |
 | `QDRANT_URL` | Qdrant address | `http://localhost:6333` |
@@ -207,26 +215,85 @@ inside a container `localhost` is the container itself.
 PostgreSQL is started by the compose file, but the application does not connect
 to it yet — it is reserved for persistent memory (see the roadmap).
 
-### Providers
+### Provider settings
 
-Currently implemented provider:
+Only the settings of the selected provider are needed. Everything except Gemini
+is optional, so an unused integration never blocks the start.
 
-- Gemini
+| Provider | Variables | Model default |
+| --- | --- | --- |
+| Gemini | `GEMINI_API_KEY`, `GEMINI_MODEL` | `gemini-2.5-flash` |
+| OpenAI | `OPENAI_API_KEY`, `OPENAI_MODEL` | `gpt-4o-mini` |
+| Claude | `CLAUDE_API_KEY`, `CLAUDE_MODEL` | `claude-sonnet-5` |
+| Groq | `GROQ_API_KEY`, `GROQ_MODEL` | `llama-3.3-70b-versatile` |
+| Ollama | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | `llama3.1` |
+| OpenRouter | `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | `openai/gpt-4o-mini` |
+| Azure OpenAI | `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION` | deployment based |
 
-Architecture supports additional providers:
+`GEMINI_EMBEDDING_MODEL` is used for indexing and search no matter which chat
+provider is selected, because Gemini is the only embedding implementation today.
+
+## Supported Providers
+
+**Implemented**
+
+- ✅ Gemini
+
+**Architecture ready**
 
 - OpenAI
 - Claude
+- Groq
 - Ollama
 - OpenRouter
 - Azure OpenAI
 
-Adding one means implementing `BaseProvider.generate(messages) -> str` and
-registering the class in `ProviderFactory`. Nothing above the provider layer
-changes: the agent, the prompt builder and the memory work with a
-provider-independent `ChatMessage` list, and each provider translates it into
-its own API format. The same applies to embeddings (`EmbeddingProvider`), the
-vector store (`VectorStore`) and the memory (`MemoryProvider`).
+The providers marked *architecture ready* are registered and selectable: the
+configuration is wired and the class exists, but `generate()` raises
+`NotImplementedError` until the API call is written.
+
+### Provider architecture
+
+```
+Teacher Agent
+     │  knows only the factory
+ProviderFactory        reads LLM_PROVIDER
+     │  knows only the registry
+ProviderRegistry       name -> provider class
+     │
+     ├── "gemini"        GeminiProvider        ✅ implemented
+     ├── "openai"        OpenAIProvider
+     ├── "claude"        ClaudeProvider
+     ├── "groq"          GroqProvider
+     ├── "ollama"        OllamaProvider
+     ├── "openrouter"    OpenRouterProvider
+     └── "azure_openai"  AzureOpenAIProvider
+```
+
+Each provider registers itself with a decorator, and the registry discovers the
+classes by importing the modules of the package:
+
+```python
+@ProviderRegistry.register("gemini")
+class GeminiProvider(BaseProvider):
+    def generate(self, messages: list[ChatMessage]) -> str:
+        ...
+```
+
+Adding a provider therefore takes two steps and touches no existing code:
+
+1. Create `app/providers/<name>.py` with a class that implements
+   `BaseProvider.generate(messages) -> str`.
+2. Decorate it with `@ProviderRegistry.register("<name>")`.
+
+There is no import list to extend and no `if/elif` in the factory. The agent,
+the prompt builder and the memory work with a provider-independent
+`ChatMessage` list, and each provider translates it into its own wire format —
+Gemini, for instance, merges the system messages into a system instruction.
+
+The same pattern is used for the other replaceable parts: `EmbeddingProvider`,
+`VectorStore`, `Retriever`, `MemoryProvider` and `Chunker` each sit behind an
+interface with a factory.
 
 ## Document Indexing
 
@@ -332,7 +399,8 @@ indexed documentation as context and is saved to the conversation history.
 - REST API and Telegram bot
 - RAG over markdown documentation: loading, chunking, embeddings, Qdrant
 - Conversation memory in the process
-- Gemini provider
+- Extensible provider architecture: registry, factory and seven registered
+  providers, Gemini implemented
 - Docker deployment with pinned image versions
 
 ### v1.1
@@ -353,4 +421,4 @@ indexed documentation as context and is saved to the conversation history.
 
 ## License
 
-MIT
+Released under the MIT License — see [LICENSE](LICENSE).
