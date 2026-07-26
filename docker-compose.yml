@@ -42,6 +42,11 @@ services:
     env_file:
       - .env
 
+    # Overrides the host value from .env: inside the container Qdrant is
+    # reachable by its service name, not on localhost.
+    environment:
+      QDRANT_URL: http://qdrant:6333
+
   telegram-bot:
     build: .
     container_name: mentor-telegram-bot
