@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     gemini_embedding_model: str = "gemini-embedding-001"
     telegram_token: str | None = None
     api_url: str | None = None
+    qdrant_url: str = "http://localhost:6333"
 
 
 settings = Settings()
