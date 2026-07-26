@@ -1,9 +1,10 @@
 import logging
-import os
 
 import httpx
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +32,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 def create_application() -> Application:
-    token = os.getenv("TELEGRAM_TOKEN")
-    api_url = os.getenv("API_URL")
+    token = settings.telegram_token
+    api_url = settings.api_url
 
     if not token:
         raise RuntimeError("TELEGRAM_TOKEN is not configured.")

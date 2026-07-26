@@ -1,5 +1,4 @@
-import os
-
+from app.config import settings
 from app.providers.gemini import GeminiProvider
 
 
@@ -7,7 +6,7 @@ class ProviderFactory:
 
     @staticmethod
     def create():
-        provider = os.getenv("LLM_PROVIDER", "gemini").lower()
+        provider = settings.llm_provider.lower()
 
         if provider == "gemini":
             return GeminiProvider()
