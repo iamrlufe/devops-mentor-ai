@@ -25,8 +25,13 @@ class Settings(BaseSettings):
     default_agent: str = "teacher"
     # Where the runtime workspaces are kept.
     workspace_store: str = "in_memory"
+    # Where the user profiles are kept.
+    user_store: str = "in_memory"
     # Conversation used when a request names no chat.
     default_chat_id: str = "default"
+    # Defaults a profile starts with.
+    default_language: str = "ru"
+    default_timezone: str = "UTC"
 
     # Gemini: the implemented provider, also used for embeddings.
     gemini_api_key: str | None = None

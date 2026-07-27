@@ -34,6 +34,19 @@ def _check_vector_store() -> None:
     VectorStoreFactory.create().client.get_collections()
 
 
+def _document_count() -> int:
+    """Return how many chunks the shared collection holds, or -1 if unknown."""
+    store = VectorStoreFactory.create()
+
+    try:
+        if not store.client.collection_exists(store.collection_name):
+            return 0
+
+        return store.client.count(store.collection_name).count
+    except Exception:  # noqa: BLE001 - reporting must not break the check
+        return -1
+
+
 def collect_components() -> list[dict[str, str]]:
     """Return the state of every replaceable component."""
     return [
@@ -65,6 +78,7 @@ def build_health(name: str, version: str) -> dict[str, object]:
         "vector_store": {
             "url": settings.qdrant_url,
             "collection": settings.qdrant_collection,
+            "documents": _document_count(),
         },
         "components": components,
     }

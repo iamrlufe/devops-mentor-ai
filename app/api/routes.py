@@ -9,6 +9,7 @@ from app.workspaces.manager import WorkspaceManager
 
 NAME = "DevOps Mentor AI Platform"
 VERSION = "1.0.0"
+RELEASE_DATE = "2026-07-27"
 API_V1_PREFIX = "/api/v1"
 
 NOT_IMPLEMENTED_STATUS = 501
@@ -46,6 +47,7 @@ class WorkspaceRequest(BaseModel):
     """A change to a workspace. Omitted fields stay as they are."""
 
     chat_id: str = ""
+    user_id: str | None = None
     agent: str | None = None
     provider: str | None = None
     embedding: str | None = None
@@ -65,7 +67,12 @@ class WorkspaceResponse(BaseModel):
 @router.get("/")
 def root() -> dict[str, str]:
     """Return the name and the state of the service."""
-    return {"name": NAME, "status": "running", "version": VERSION}
+    return {
+        "name": NAME,
+        "status": "running",
+        "version": VERSION,
+        "release_date": RELEASE_DATE,
+    }
 
 
 @router.get("/health")

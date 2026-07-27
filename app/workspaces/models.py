@@ -3,6 +3,7 @@ from dataclasses import dataclass, replace
 #: Fields a caller may change at runtime. Kept in one place so a new field is
 #: added once instead of in the API, the bot and the manager.
 MUTABLE_FIELDS = (
+    "user_id",
     "agent",
     "provider",
     "embedding",
@@ -24,6 +25,9 @@ class Workspace:
     """
 
     chat_id: str
+    #: Profile that owns this workspace. Empty for a workspace addressed
+    #: directly over REST, which needs no profile.
+    user_id: str = ""
     agent: str = ""
     provider: str = ""
     embedding: str = ""
