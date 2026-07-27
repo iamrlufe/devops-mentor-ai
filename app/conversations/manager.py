@@ -4,6 +4,7 @@ from app.conversations.models import (
     ConversationMessage,
     new_conversation_id,
 )
+from app.organizations.manager import OrganizationManager
 
 TITLE_LENGTH = 60
 
@@ -36,6 +37,7 @@ class ConversationManager:
 
         conversation = Conversation(
             conversation_id=new_conversation_id(),
+            organization_id=OrganizationManager.default_id(),
             user_id=user_id,
             chat_id=chat_id,
             agent=agent,
@@ -58,6 +60,7 @@ class ConversationManager:
         return ConversationFactory.create().add_message(
             ConversationMessage(
                 conversation_id=conversation.conversation_id,
+                organization_id=conversation.organization_id,
                 user_id=conversation.user_id,
                 agent=conversation.agent,
                 provider=provider or conversation.provider,

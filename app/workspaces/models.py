@@ -31,6 +31,8 @@ class Workspace:
     """
 
     chat_id: str
+    #: Tenant the workspace belongs to.
+    organization_id: str = ""
     #: Profile that owns this workspace. Empty for a workspace addressed
     #: directly over REST, which needs no profile.
     user_id: str = ""
@@ -72,6 +74,7 @@ class Workspace:
         """Return the workspace as plain data for the API and the bot."""
         return {
             "chat_id": self.chat_id,
+            "organization_id": self.organization_id,
             **{name: getattr(self, name) for name in MUTABLE_FIELDS},
             "created_at": self.created_at.isoformat(timespec="seconds"),
             "updated_at": self.updated_at.isoformat(timespec="seconds"),

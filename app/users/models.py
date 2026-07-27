@@ -48,6 +48,8 @@ class UserProfile:
     """
 
     user_id: str
+    #: Tenant the profile belongs to. One organization exists today.
+    organization_id: str = ""
     telegram_id: str = ""
     name: str = ""
     phone: str = ""
@@ -98,6 +100,7 @@ class UserProfile:
         """Return the profile as plain data for the bot and for reporting."""
         return {
             "user_id": self.user_id,
+            "organization_id": self.organization_id,
             "telegram_id": self.telegram_id,
             "name": self.name,
             "phone": self.phone,

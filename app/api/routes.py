@@ -1,3 +1,6 @@
+import logging
+import time
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -5,6 +8,8 @@ from app.agents.registry import AgentRegistry
 from app.api.health import build_health
 from app.config import settings
 from app.conversations.service import ConversationService
+from app.database.repositories.metrics_repository import MetricsRepository
+from app.organizations.manager import OrganizationManager
 from app.providers.registry import ProviderRegistry
 from app.workspaces.manager import WorkspaceManager
 
@@ -14,6 +19,8 @@ RELEASE_DATE = "2026-07-27"
 API_V1_PREFIX = "/api/v1"
 
 NOT_IMPLEMENTED_STATUS = 501
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -160,13 +167,21 @@ def chat(request: ChatRequest) -> ChatResponse:
     except (ValueError, FileNotFoundError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
+    started = time.monotonic()
+
     try:
         answer = context.ask(request.message)
     except NotImplementedError as error:
+        _record_request(context, started, success=False, error=str(error))
         raise HTTPException(
             status_code=NOT_IMPLEMENTED_STATUS,
             detail=str(error),
         ) from error
+    except RuntimeError as error:
+        _record_request(context, started, success=False, error=str(error))
+        raise
+
+    _record_request(context, started, success=True, error="")
 
     conversation = ConversationService.record_exchange(
         chat_id=context.workspace.chat_id,
@@ -200,3 +215,38 @@ def _workspace_document(chat_id: str) -> dict[str, object]:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
     return {"workspace": stored.as_dict(), "resolved": resolved}
+
+
+def _record_request(
+    context: object,
+    started: float,
+    success: bool,
+    error: str,
+) -> None:
+    """Store how one request went, for the administration to report on.
+
+    Measuring must never cost an answer, so a failure here only reaches the log.
+    """
+    selection = context.runtime.selection
+
+    try:
+        MetricsRepository.record(
+            {
+                "organization_id": (
+                    context.workspace.organization_id
+                    or OrganizationManager.default_id()
+                ),
+                "user_id": context.workspace.user_id,
+                "chat_id": context.workspace.chat_id,
+                "agent": selection["agent"],
+                "provider": selection["provider"],
+                "embedding": selection["embedding"],
+                "retriever": selection["retriever"],
+                "memory": selection["memory"],
+                "latency_ms": int((time.monotonic() - started) * 1000),
+                "success": success,
+                "error": error[:500],
+            }
+        )
+    except Exception as failure:  # noqa: BLE001 - metrics must not break answers
+        logger.warning("Could not record the request metric: %s", failure)

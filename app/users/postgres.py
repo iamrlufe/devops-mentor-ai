@@ -10,6 +10,7 @@ def to_profile(row: dict[str, Any]) -> UserProfile:
     """Turn a database row into a profile."""
     return UserProfile(
         user_id=row["user_id"],
+        organization_id=row["organization_id"],
         telegram_id=row["telegram_id"] or "",
         name=row["name"],
         phone=row["phone"],
@@ -33,6 +34,7 @@ def to_row(profile: UserProfile) -> dict[str, Any]:
     """Turn a profile into the values the repository expects."""
     return {
         "user_id": profile.user_id,
+        "organization_id": profile.organization_id,
         "telegram_id": profile.telegram_id or None,
         "name": profile.name,
         "phone": profile.phone,

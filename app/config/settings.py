@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     user_store: str = "postgres"
     # Where the conversation history is kept. This is the source of truth.
     conversation_store: str = "postgres"
+    # Where organizations are kept.
+    organization_store: str = "postgres"
+    # Where the administration data is read from.
+    admin_source: str = "postgres"
     # Conversation used when a request names no chat.
     default_chat_id: str = "default"
     # Defaults a profile starts with.
@@ -75,6 +79,15 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "mentor_documents"
 
+    # Administration. Without an API key the admin endpoints refuse everyone.
+    admin_api_key: str | None = None
+    admin_telegram_ids: str = ""
+    admin_role: str = "admin"
+
+    # Organization every record belongs to until the platform is multi-tenant.
+    default_organization_id: str = "org_default"
+    default_organization_name: str = "Default"
+
     # PostgreSQL. DATABASE_URL wins over the parts when it is set.
     postgres_host: str = "localhost"
     postgres_port: int = 5432
@@ -88,6 +101,15 @@ class Settings(BaseSettings):
     # Telegram bot
     telegram_token: str | None = None
     api_url: str | None = None
+
+    @property
+    def admin_telegram_id_set(self) -> frozenset[str]:
+        """Return the Telegram accounts that may administer the platform."""
+        return frozenset(
+            part.strip()
+            for part in self.admin_telegram_ids.split(",")
+            if part.strip()
+        )
 
     @property
     def database_dsn(self) -> str:

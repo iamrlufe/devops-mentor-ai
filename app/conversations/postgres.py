@@ -10,6 +10,7 @@ def to_conversation(row: dict[str, Any]) -> Conversation:
     """Turn a database row into a conversation."""
     return Conversation(
         conversation_id=row["conversation_id"],
+        organization_id=row["organization_id"],
         user_id=row["user_id"],
         chat_id=row["chat_id"],
         agent=row["agent"],
@@ -27,6 +28,7 @@ def to_message(row: dict[str, Any]) -> ConversationMessage:
     return ConversationMessage(
         message_id=row["message_id"],
         conversation_id=row["conversation_id"],
+        organization_id=row["organization_id"],
         user_id=row["user_id"],
         agent=row["agent"],
         provider=row["provider"],
@@ -56,6 +58,7 @@ class PostgresConversationStore(ConversationStore):
         ConversationRepository.upsert(
             {
                 "conversation_id": conversation.conversation_id,
+                "organization_id": conversation.organization_id,
                 "user_id": conversation.user_id,
                 "chat_id": conversation.chat_id,
                 "agent": conversation.agent,
@@ -72,6 +75,7 @@ class PostgresConversationStore(ConversationStore):
         row = ConversationRepository.add_message(
             {
                 "conversation_id": message.conversation_id,
+                "organization_id": message.organization_id,
                 "user_id": message.user_id,
                 "agent": message.agent,
                 "provider": message.provider,

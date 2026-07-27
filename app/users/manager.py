@@ -1,4 +1,5 @@
 from app.config import settings
+from app.organizations.manager import OrganizationManager
 from app.users.factory import UserFactory
 from app.users.models import UserProfile, new_user_id
 
@@ -37,6 +38,7 @@ class UserManager:
 
         profile = UserProfile(
             user_id=new_user_id(),
+            organization_id=OrganizationManager.default_id(),
             telegram_id=str(telegram_id),
             language=settings.default_language,
             timezone=settings.default_timezone,

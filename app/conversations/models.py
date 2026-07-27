@@ -23,6 +23,7 @@ class ConversationMessage:
     conversation_id: str
     role: str
     message: str
+    organization_id: str = ""
     user_id: str = ""
     agent: str = ""
     provider: str = ""
@@ -36,6 +37,7 @@ class ConversationMessage:
         return {
             "message_id": self.message_id,
             "conversation_id": self.conversation_id,
+            "organization_id": self.organization_id,
             "user_id": self.user_id,
             "agent": self.agent,
             "provider": self.provider,
@@ -56,6 +58,7 @@ class Conversation:
     """
 
     conversation_id: str
+    organization_id: str = ""
     user_id: str = ""
     chat_id: str = ""
     agent: str = ""
@@ -76,6 +79,7 @@ class Conversation:
         """Return the conversation as plain data."""
         return {
             "conversation_id": self.conversation_id,
+            "organization_id": self.organization_id,
             "user_id": self.user_id,
             "chat_id": self.chat_id,
             "agent": self.agent,

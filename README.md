@@ -21,6 +21,9 @@ markdown documentation.
 - **Telegram Bot** — long-polling bot on top of the same API.
 - **RAG** — retrieved documentation is injected as a separate system message.
 - **Vector Search** — semantic search over Qdrant with cosine distance.
+- **Administration** — an Admin API that every operator client uses: the
+  Telegram admin today, a web dashboard or a CLI tomorrow.
+- **Organizations** — every record belongs to a tenant, ready for SaaS.
 - **PostgreSQL persistence** — profiles, workspaces, conversations and memory
   survive a restart; the in-process stores stay as the demo option.
 - **Conversation history** — every message is stored with its agent,
@@ -369,6 +372,106 @@ stay apart.
 UserManager ─► PostgresUserStore ─► UserRepository ─► PostgreSQL
 ```
 
+## Administration
+
+All administration logic lives in the platform. A client — the Telegram admin,
+a web dashboard, a CLI, a mobile app — only calls the Admin API and formats what
+comes back. None of them holds a rule, a query or a permission check.
+
+```
+Telegram Admin   Web Dashboard   CLI   Mobile
+        \             |          /       /
+         ────────► /api/v1/admin/* ◄─────
+                        │
+                  AdminService
+                        │
+        AdminManager ── AdminFactory ── AdminRegistry
+                        │
+                 AdminRepository ──► PostgreSQL
+```
+
+### Authorisation
+
+Two credentials identify an administrator, and the platform decides which one
+counts:
+
+```
+X-Admin-Key: <ADMIN_API_KEY>     any client
+X-Telegram-Id: <telegram id>     listed in ADMIN_TELEGRAM_IDS
+```
+
+Without `ADMIN_API_KEY` and without `ADMIN_TELEGRAM_IDS` the administration is
+disabled and every endpoint answers `403`. Roles are `admin` and `user` today;
+`ADMIN_ROLE` names the role a matching credential is given.
+
+### Admin API
+
+```bash
+curl -H "X-Admin-Key: $ADMIN_API_KEY" \
+     http://localhost:8000/api/v1/admin/dashboard
+```
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /api/v1/admin` | Who you are and what is available |
+| `GET /api/v1/admin/dashboard` | Version, uptime, users, messages, documents, registry sizes |
+| `GET /api/v1/admin/statistics` | Registrations, messages per day, usage per layer, average response time |
+| `GET /api/v1/admin/users` | Profiles with their activity |
+| `GET /api/v1/admin/users/{user_id}` | One profile |
+| `GET /api/v1/admin/users/{user_id}/profile` | One profile |
+| `GET /api/v1/admin/users/{user_id}/workspace` | Their workspace and what it resolves to |
+| `GET /api/v1/admin/users/{user_id}/history` | Their newest messages |
+| `GET /api/v1/admin/users/{user_id}/memory` | Their memory windows |
+| `GET /api/v1/admin/users/{user_id}/statistics` | Their counts and latency |
+| `GET /api/v1/admin/conversations` | Conversations, newest first |
+| `GET /api/v1/admin/conversations/{id}` | One conversation |
+| `GET /api/v1/admin/conversations/{id}/messages` | Its messages |
+| `GET /api/v1/admin/agents` | Every agent with its usage |
+| `GET /api/v1/admin/providers` | Requests, errors and latency per provider |
+| `GET /api/v1/admin/organizations` | Every organization |
+| `GET /api/v1/admin/workspaces` | Stored workspaces |
+
+Provider numbers come from `request_metrics`, one row per answered or failed
+request, so errors and latency are measured rather than guessed.
+
+### Telegram Admin
+
+Add your Telegram id to `ADMIN_TELEGRAM_IDS` and the admin commands appear:
+
+```
+/admin        who you are and what you can do
+/dashboard    the platform summary
+/stats        statistics
+/users        the newest users
+/agents       agents and their usage
+/providers    providers, errors, latency
+/workspaces   stored workspaces
+/history <user_id>   the newest messages of a user
+```
+
+Every one of them is a call to `/api/v1/admin/*` and nothing else — no SQL, no
+counting, no permission rule in the bot.
+
+### Web Dashboard and CLI
+
+Both are already possible without touching the backend: authenticate with
+`X-Admin-Key` and read the same endpoints. A screen is a `GET`, which is why the
+administration was built as an API before it was built as a UI.
+
+## Organizations
+
+Every profile, workspace, conversation and message carries an
+`organization_id`. One organization exists today — `Default` — and it is created
+on first use:
+
+```
+Organization ─► User ─► Workspace ─► Agent ─► Provider ─► Embedding ─► Retriever
+```
+
+Adding tenants needs no schema change: the columns and the indexes are already
+there, and `OrganizationManager.create(name)` returns a second one. Stores are
+selected by `ORGANIZATION_STORE` through the same registry as everything else.
+
 ## Multi-Agent Architecture
 
 Every agent implements `BaseAgent`. The shared pipeline lives once in
@@ -552,6 +655,18 @@ devops-mentor-ai/
 │   │   ├── connection.py
 │   │   ├── migrations.py
 │   │   └── repositories/         # every SQL statement of the platform
+│   ├── admin/                    # administration behind one service
+│   │   ├── models.py             # AdminIdentity, Dashboard, Statistics
+│   │   ├── base.py               # AdminSource interface
+│   │   ├── registry.py
+│   │   ├── factory.py
+│   │   ├── postgres.py
+│   │   ├── repositories.py       # aggregate SQL of the administration
+│   │   ├── permissions.py        # who may administer
+│   │   ├── statistics.py
+│   │   ├── manager.py
+│   │   └── service.py            # the only entry point a client calls
+│   ├── organizations/            # tenants behind a registry
 │   ├── conversations/            # stored history, the source of truth
 │   │   ├── models.py             # Conversation, ConversationMessage
 │   │   ├── base.py               # ConversationStore interface
@@ -656,6 +771,12 @@ mean to change them.
 | `POSTGRES_PORT` | Database port | `5432` |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Database credentials | `mentor` |
 | `DATABASE_URL` | Full connection string; wins over the parts | — |
+| `ADMIN_API_KEY` | Credential for the Admin API; unset disables administration | — |
+| `ADMIN_TELEGRAM_IDS` | Comma separated Telegram ids allowed to administer | — |
+| `ADMIN_ROLE` | Role a matching credential is given | `admin` |
+| `ADMIN_SOURCE` | Where the administration reads its numbers | `postgres` |
+| `ORGANIZATION_STORE` | Where organizations are kept | `postgres` |
+| `DEFAULT_ORGANIZATION_ID` | Tenant every record belongs to | `org_default` |
 | `DEFAULT_LANGUAGE` | Language a new profile starts with | `ru` |
 | `DEFAULT_TIMEZONE` | Timezone a new profile starts with | `UTC` |
 | `DEFAULT_CHAT_ID` | Conversation used when a request names no chat | `default` |

@@ -16,7 +16,7 @@ from telegram.ext import (
 from app.config import settings
 from app.users.manager import UserManager
 from app.users.models import now
-from bot import keyboards, texts
+from bot import admin, keyboards, texts
 
 REQUEST_TIMEOUT = 60.0
 
@@ -568,6 +568,12 @@ def create_application() -> Application:
 
     for command, handler in COMMANDS.items():
         application.add_handler(CommandHandler(command, handler))
+
+    # Administration commands. `/agents` and `/providers` already belong to
+    # the user menu, so only the ones that do not collide are added here.
+    for command, handler in admin.ADMIN_COMMANDS.items():
+        if command not in COMMANDS:
+            application.add_handler(CommandHandler(command, handler))
 
     application.add_handler(CallbackQueryHandler(on_choice))
     application.add_handler(MessageHandler(filters.CONTACT, receive_contact))

@@ -5,7 +5,8 @@ from psycopg.types.json import Jsonb
 from app.database.connection import connection
 
 COLUMNS = (
-    "user_id, telegram_id, name, phone, language, timezone, "
+    "user_id, organization_id, telegram_id, name, phone, "
+    "language, timezone, "
     "preferred_agent, preferred_provider, last_agent, last_provider, "
     "message_count, conversation_count, registration_source, metadata, "
     "created_at, updated_at, last_seen"
@@ -14,13 +15,15 @@ COLUMNS = (
 UPSERT = f"""
 INSERT INTO users ({COLUMNS})
 VALUES (
-    %(user_id)s, %(telegram_id)s, %(name)s, %(phone)s, %(language)s,
+    %(user_id)s, %(organization_id)s, %(telegram_id)s, %(name)s, %(phone)s,
+    %(language)s,
     %(timezone)s, %(preferred_agent)s, %(preferred_provider)s, %(last_agent)s,
     %(last_provider)s, %(message_count)s, %(conversation_count)s,
     %(registration_source)s, %(metadata)s, %(created_at)s, %(updated_at)s,
     %(last_seen)s
 )
 ON CONFLICT (user_id) DO UPDATE SET
+    organization_id = EXCLUDED.organization_id,
     telegram_id = EXCLUDED.telegram_id,
     name = EXCLUDED.name,
     phone = EXCLUDED.phone,

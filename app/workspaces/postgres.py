@@ -10,6 +10,7 @@ def to_workspace(row: dict[str, Any]) -> Workspace:
     """Turn a database row into a workspace."""
     return Workspace(
         chat_id=row["chat_id"],
+        organization_id=row["organization_id"],
         user_id=row["user_id"],
         agent=row["agent"],
         provider=row["provider"],
@@ -27,6 +28,7 @@ def to_row(workspace: Workspace) -> dict[str, Any]:
     """Turn a workspace into the values the repository expects."""
     return {
         "chat_id": workspace.chat_id,
+        "organization_id": workspace.organization_id,
         "user_id": workspace.user_id,
         "agent": workspace.agent,
         "provider": workspace.provider,

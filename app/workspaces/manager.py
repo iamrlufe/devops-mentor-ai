@@ -3,6 +3,7 @@ from app.config import settings
 from app.core.registry import Registry
 from app.embeddings.registry import EmbeddingRegistry
 from app.memory.registry import MemoryRegistry
+from app.organizations.manager import OrganizationManager
 from app.prompting.registry import PromptRegistry
 from app.providers.registry import ProviderRegistry
 from app.rag.registry import RetrieverRegistry
@@ -36,7 +37,13 @@ class WorkspaceManager:
         key = chat_id or settings.default_chat_id
         stored = WorkspaceFactory.create().get(key)
 
-        return stored if stored is not None else Workspace(chat_id=key)
+        if stored is not None:
+            return stored
+
+        return Workspace(
+            chat_id=key,
+            organization_id=OrganizationManager.default_id(),
+        )
 
     @staticmethod
     def list() -> list[Workspace]:

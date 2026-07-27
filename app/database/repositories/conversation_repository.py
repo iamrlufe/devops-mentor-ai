@@ -5,21 +5,23 @@ from psycopg.types.json import Jsonb
 from app.database.connection import connection
 
 CONVERSATION_COLUMNS = (
-    "conversation_id, user_id, chat_id, agent, provider, title, "
-    "message_count, metadata, created_at, updated_at"
+    "conversation_id, organization_id, user_id, chat_id, agent, "
+    "provider, title, message_count, metadata, created_at, updated_at"
 )
 MESSAGE_COLUMNS = (
-    "message_id, conversation_id, user_id, agent, provider, role, message, "
-    "tokens, metadata, created_at"
+    "message_id, conversation_id, organization_id, user_id, agent, "
+    "provider, role, message, tokens, metadata, created_at"
 )
 
 UPSERT_CONVERSATION = f"""
 INSERT INTO conversations ({CONVERSATION_COLUMNS})
 VALUES (
-    %(conversation_id)s, %(user_id)s, %(chat_id)s, %(agent)s, %(provider)s,
+    %(conversation_id)s, %(organization_id)s, %(user_id)s, %(chat_id)s,
+    %(agent)s, %(provider)s,
     %(title)s, %(message_count)s, %(metadata)s, %(created_at)s, %(updated_at)s
 )
 ON CONFLICT (conversation_id) DO UPDATE SET
+    organization_id = EXCLUDED.organization_id,
     user_id = EXCLUDED.user_id,
     chat_id = EXCLUDED.chat_id,
     agent = EXCLUDED.agent,
@@ -32,10 +34,12 @@ ON CONFLICT (conversation_id) DO UPDATE SET
 
 INSERT_MESSAGE = """
 INSERT INTO conversation_messages (
-    conversation_id, user_id, agent, provider, role, message, tokens, metadata
+    conversation_id, organization_id, user_id, agent, provider, role,
+    message, tokens, metadata
 )
 VALUES (
-    %(conversation_id)s, %(user_id)s, %(agent)s, %(provider)s, %(role)s,
+    %(conversation_id)s, %(organization_id)s, %(user_id)s, %(agent)s,
+    %(provider)s, %(role)s,
     %(message)s, %(tokens)s, %(metadata)s
 )
 RETURNING message_id, created_at
