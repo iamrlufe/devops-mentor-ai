@@ -1,4 +1,8 @@
+import threading
+from typing import ClassVar
+
 from app.config import settings
+from app.core.instances import get_or_create
 from app.vectorstore.base import VectorStore
 from app.vectorstore.qdrant_store import QdrantVectorStore
 
@@ -10,7 +14,8 @@ class VectorStoreFactory:
     reuses a client instead of opening a new one on every request.
     """
 
-    _instances: dict[str, VectorStore] = {}
+    _instances: ClassVar[dict[str, VectorStore]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @staticmethod
     def create(collection: str = "") -> VectorStore:
@@ -22,7 +27,9 @@ class VectorStoreFactory:
         """
         name = collection or settings.qdrant_collection
 
-        if name not in VectorStoreFactory._instances:
-            VectorStoreFactory._instances[name] = QdrantVectorStore(name)
-
-        return VectorStoreFactory._instances[name]
+        return get_or_create(
+            VectorStoreFactory._instances,
+            VectorStoreFactory._lock,
+            name,
+            lambda: QdrantVectorStore(name),
+        )

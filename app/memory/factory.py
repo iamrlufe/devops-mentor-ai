@@ -1,4 +1,8 @@
+import threading
+from typing import ClassVar
+
 from app.config import settings
+from app.core.instances import get_or_create
 from app.memory.base import MemoryProvider
 from app.memory.registry import MemoryRegistry
 
@@ -10,7 +14,8 @@ class MemoryFactory:
     implementation, so the clients behind them are built once.
     """
 
-    _instances: dict[str, MemoryProvider] = {}
+    _instances: ClassVar[dict[str, MemoryProvider]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @staticmethod
     def create(name: str = "") -> MemoryProvider:
@@ -27,7 +32,9 @@ class MemoryFactory:
         implementation = MemoryRegistry.get(name or settings.memory_provider)
         key = implementation.__name__
 
-        if key not in MemoryFactory._instances:
-            MemoryFactory._instances[key] = implementation()
-
-        return MemoryFactory._instances[key]
+        return get_or_create(
+            MemoryFactory._instances,
+            MemoryFactory._lock,
+            key,
+            lambda: implementation(),
+        )

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     embedding_provider: str = "gemini"
     memory_provider: str = "in_memory"
+    # Messages kept per chat by the in-process memory. 0 disables the cap.
+    memory_max_messages: int = 100
     retriever_provider: str = "qdrant"
     default_agent: str = "teacher"
 

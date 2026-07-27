@@ -211,7 +211,7 @@ Package `app.memory`, selected by `MEMORY_PROVIDER`.
 
 | Provider | State |
 | --- | --- |
-| `in_memory` | ✅ implemented, lost on restart |
+| `in_memory` | ✅ implemented, lost on restart, capped by `MEMORY_MAX_MESSAGES` |
 | `redis`, `sqlite`, `postgres`, `mongo` | registered |
 
 ### Retriever Registry
@@ -338,6 +338,7 @@ mean to change them.
 | `MEMORY_PROVIDER` | Conversation memory | `in_memory` |
 | `RETRIEVER_PROVIDER` | Retriever | `qdrant` |
 | `DEFAULT_AGENT` | Agent used when the request names none | `teacher` |
+| `MEMORY_MAX_MESSAGES` | Messages kept per chat by the in-process memory, `0` disables the cap | `100` |
 | `GEMINI_API_KEY` | Gemini API key. Required | — |
 | `GEMINI_MODEL` | Model used for answers | `gemini-2.5-flash` |
 | `GEMINI_EMBEDDING_MODEL` | Model used for embeddings | `gemini-embedding-001` |

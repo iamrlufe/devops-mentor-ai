@@ -1,4 +1,8 @@
+import threading
+from typing import ClassVar
+
 from app.config import settings
+from app.core.instances import get_or_create
 from app.rag.base import Retriever
 from app.rag.registry import RetrieverRegistry
 
@@ -12,7 +16,8 @@ class RetrieverFactory:
     while reusing one client.
     """
 
-    _instances: dict[tuple[str, str], Retriever] = {}
+    _instances: ClassVar[dict[tuple[str, str], Retriever]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @staticmethod
     def create(name: str = "", collection: str = "") -> Retriever:
@@ -31,7 +36,9 @@ class RetrieverFactory:
         implementation = RetrieverRegistry.get(name or settings.retriever_provider)
         key = (implementation.__name__, collection)
 
-        if key not in RetrieverFactory._instances:
-            RetrieverFactory._instances[key] = implementation(collection=collection)
-
-        return RetrieverFactory._instances[key]
+        return get_or_create(
+            RetrieverFactory._instances,
+            RetrieverFactory._lock,
+            key,
+            lambda: implementation(collection=collection),
+        )

@@ -1,4 +1,8 @@
+import threading
+from typing import ClassVar
+
 from app.config import settings
+from app.core.instances import get_or_create
 from app.providers.base import BaseProvider
 from app.providers.registry import ProviderRegistry
 
@@ -10,7 +14,8 @@ class ProviderFactory:
     any concrete provider class.
     """
 
-    _instances: dict[str, BaseProvider] = {}
+    _instances: ClassVar[dict[str, BaseProvider]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @staticmethod
     def create(name: str = "") -> BaseProvider:
@@ -27,7 +32,9 @@ class ProviderFactory:
         implementation = ProviderRegistry.get(name or settings.llm_provider)
         key = implementation.__name__
 
-        if key not in ProviderFactory._instances:
-            ProviderFactory._instances[key] = implementation()
-
-        return ProviderFactory._instances[key]
+        return get_or_create(
+            ProviderFactory._instances,
+            ProviderFactory._lock,
+            key,
+            lambda: implementation(),
+        )

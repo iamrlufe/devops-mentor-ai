@@ -1,6 +1,10 @@
+import threading
+from typing import ClassVar
+
 from app.agents.base import BaseAgent
 from app.agents.registry import AgentRegistry
 from app.config import settings
+from app.core.instances import get_or_create
 
 
 class AgentFactory:
@@ -11,7 +15,8 @@ class AgentFactory:
     also builds its provider, memory and retriever.
     """
 
-    _instances: dict[str, BaseAgent] = {}
+    _instances: ClassVar[dict[str, BaseAgent]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @staticmethod
     def create(name: str = "") -> BaseAgent:
@@ -28,7 +33,9 @@ class AgentFactory:
         agent_class = AgentRegistry.get(name or settings.default_agent)
         key = agent_class.name or agent_class.__name__
 
-        if key not in AgentFactory._instances:
-            AgentFactory._instances[key] = agent_class()
-
-        return AgentFactory._instances[key]
+        return get_or_create(
+            AgentFactory._instances,
+            AgentFactory._lock,
+            key,
+            lambda: agent_class(),
+        )

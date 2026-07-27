@@ -1,4 +1,8 @@
+import threading
+from typing import ClassVar
+
 from app.config import settings
+from app.core.instances import get_or_create
 from app.embeddings.base import EmbeddingProvider
 from app.embeddings.registry import EmbeddingRegistry
 
@@ -11,7 +15,8 @@ class EmbeddingFactory:
     implementation, so the clients behind them are built once.
     """
 
-    _instances: dict[str, EmbeddingProvider] = {}
+    _instances: ClassVar[dict[str, EmbeddingProvider]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @staticmethod
     def create(name: str = "") -> EmbeddingProvider:
@@ -28,7 +33,9 @@ class EmbeddingFactory:
         implementation = EmbeddingRegistry.get(name or settings.embedding_provider)
         key = implementation.__name__
 
-        if key not in EmbeddingFactory._instances:
-            EmbeddingFactory._instances[key] = implementation()
-
-        return EmbeddingFactory._instances[key]
+        return get_or_create(
+            EmbeddingFactory._instances,
+            EmbeddingFactory._lock,
+            key,
+            lambda: implementation(),
+        )

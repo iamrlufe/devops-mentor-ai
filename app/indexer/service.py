@@ -44,7 +44,7 @@ class DocumentIndexer:
             collection: Which collection to fill. Empty means the shared one,
                 so an agent with its own collection is indexed by naming it.
         """
-        report = on_step or (lambda step: None)
+        report = on_step or (lambda _step: None)
 
         report(STEP_LOADING)
         documents = DocumentLoaderService.load_directory(directory)

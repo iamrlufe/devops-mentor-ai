@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import ClassVar
 
 PROMPTS_DIRECTORY = Path(__file__).resolve().parents[1] / "prompts"
 PROMPT_SUFFIX = ".md"
@@ -13,7 +14,7 @@ class PromptRegistry:
     files, which makes overriding a prompt a one-line call.
     """
 
-    _prompts: dict[str, str] = {}
+    _prompts: ClassVar[dict[str, str]] = {}
 
     @classmethod
     def register(cls, name: str, text: str) -> None:

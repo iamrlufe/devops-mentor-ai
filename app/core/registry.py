@@ -1,5 +1,6 @@
 import importlib
 import pkgutil
+import threading
 from collections.abc import Callable
 from typing import ClassVar, Generic, TypeVar
 
@@ -27,6 +28,7 @@ class Registry(Generic[T]):
 
     _entries: ClassVar[dict[str, type]]
     _loaded: ClassVar[bool]
+    _lock: ClassVar[threading.RLock]
 
     def __init_subclass__(
         cls,
@@ -44,6 +46,8 @@ class Registry(Generic[T]):
 
         cls._entries = {}
         cls._loaded = False
+        # Reentrant: importing a module may look up this registry again.
+        cls._lock = threading.RLock()
 
         if package:
             cls.package = package
@@ -105,15 +109,26 @@ class Registry(Generic[T]):
 
     @classmethod
     def load(cls) -> None:
-        """Import the modules of the package once, so the decorators run."""
+        """Import the modules of the package once, so the decorators run.
+
+        The flag is raised only after every module is imported: marking the
+        registry loaded first lets a second thread look up a name while the
+        implementations are still being imported, and get told the name does
+        not exist.
+        """
         if cls._loaded:
             return
 
-        cls._loaded = True
-        package = importlib.import_module(cls.package)
+        with cls._lock:
+            if cls._loaded:
+                return
 
-        for module in pkgutil.iter_modules(package.__path__):
-            importlib.import_module(f"{cls.package}.{module.name}")
+            package = importlib.import_module(cls.package)
+
+            for module in pkgutil.iter_modules(package.__path__):
+                importlib.import_module(f"{cls.package}.{module.name}")
+
+            cls._loaded = True
 
     @staticmethod
     def _normalize(name: str) -> str:
