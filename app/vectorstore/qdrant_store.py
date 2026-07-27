@@ -1,8 +1,10 @@
+import threading
 import uuid
 
 from qdrant_client import QdrantClient, models
 
 from app.config import settings
+from app.core.instances import get_or_create
 from app.embeddings.models import Embedding
 from app.vectorstore.base import VectorStore
 from app.vectorstore.models import SearchResult
@@ -14,13 +16,24 @@ UPSERT_BATCH_SIZE = 100
 PAYLOAD_CHUNK_ID = "chunk_id"
 PAYLOAD_METADATA = "metadata"
 
+#: One client per Qdrant address. A store is bound to a collection, not to a
+#: connection, and a collection name may come from a request, so building a
+#: client per store would let callers grow the process without bound.
+_CLIENTS: dict[str, QdrantClient] = {}
+_CLIENTS_LOCK = threading.Lock()
+
+
+def qdrant_client(url: str) -> QdrantClient:
+    """Return the shared client for a Qdrant address."""
+    return get_or_create(_CLIENTS, _CLIENTS_LOCK, url, lambda: QdrantClient(url=url))
+
 
 class QdrantVectorStore(VectorStore):
 
     def __init__(self, collection_name: str = "") -> None:
         """Bind the store to a collection, defaulting to the shared one."""
         self.collection_name = collection_name or settings.qdrant_collection
-        self.client = QdrantClient(url=settings.qdrant_url)
+        self.client = qdrant_client(settings.qdrant_url)
 
     def create_collection(self, vector_size: int) -> None:
         if self.client.collection_exists(self.collection_name):
