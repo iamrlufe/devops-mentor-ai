@@ -7,7 +7,10 @@ from app.workspaces.registry import WorkspaceRegistry
 
 @WorkspaceRegistry.register("in_memory")
 class InMemoryWorkspaceStore(WorkspaceStore):
-    """Keeps the workspaces in the process memory. They are lost on restart.
+    """Demo store: keeps the workspaces in the process memory.
+
+    They are lost on restart. `PostgresWorkspaceStore` is what a running
+    deployment uses.
 
     The store is written from the request threadpool and from the bot, so every
     access is guarded.

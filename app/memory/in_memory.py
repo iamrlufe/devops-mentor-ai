@@ -8,7 +8,10 @@ from app.memory.registry import MemoryRegistry
 
 @MemoryRegistry.register("in_memory")
 class InMemoryMemoryProvider(MemoryProvider):
-    """Keeps the history in the process memory. It is lost on restart.
+    """Demo provider: keeps the history in the process memory.
+
+    It is lost on restart. `PostgresMemoryProvider` is what a running
+    deployment uses.
 
     The history of a chat is capped by `MEMORY_MAX_MESSAGES`: nothing evicts it
     otherwise, so a long lived chat would grow without bound and take the prompt

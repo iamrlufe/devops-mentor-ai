@@ -21,7 +21,10 @@ markdown documentation.
 - **Telegram Bot** — long-polling bot on top of the same API.
 - **RAG** — retrieved documentation is injected as a separate system message.
 - **Vector Search** — semantic search over Qdrant with cosine distance.
-- **Conversation Memory** — per agent and per chat, behind `MemoryProvider`.
+- **PostgreSQL persistence** — profiles, workspaces, conversations and memory
+  survive a restart; the in-process stores stay as the demo option.
+- **Conversation history** — every message is stored with its agent,
+  provider, tokens and timestamp; memory is only the prompt window.
 - **Prompt System** — a `PromptRegistry` resolves prompts by name from
   markdown files or from memory, so an agent never touches the filesystem.
 - **Document Indexing** — one command turns markdown into a searchable index.
@@ -311,6 +314,61 @@ Everything is per user and takes effect on the next message:
 Two Telegram users in the same bot keep separate profiles, workspaces and
 conversation histories.
 
+## Persistence
+
+Everything a user builds up is stored in PostgreSQL: their profile, their
+workspace, their conversations and the memory window.
+
+```
+users                  profiles, activity counters
+workspaces             the stack of each user
+conversations          one thread per chat and agent
+conversation_messages  every turn: role, message, tokens, agent, provider
+memory_messages        the recent window the prompt builder reads
+```
+
+**Conversations are the source of truth; memory is a cache.** Memory holds only
+the last `MEMORY_MAX_MESSAGES` turns because that is what goes into the prompt,
+so trimming it loses nothing — the full history stays in
+`conversation_messages`.
+
+Each layer is selected by a setting and resolved through its registry, so the
+in-process implementations remain available as a zero-setup demo:
+
+| Setting | Implemented | Demo |
+| --- | --- | --- |
+| `USER_STORE` | `postgres` | `in_memory` |
+| `WORKSPACE_STORE` | `postgres` | `in_memory` |
+| `CONVERSATION_STORE` | `postgres` | `in_memory` |
+| `MEMORY_PROVIDER` | `postgres` | `in_memory` |
+
+### Schema and migrations
+
+Plain SQL, no ORM. The files in `migrations/` are applied once each, in name
+order, and recorded in `schema_migrations`:
+
+```bash
+docker compose exec api python -m app.scripts.migrate
+```
+
+```
+Database: postgres:5432/mentor
+Pending: 001_initial.sql
+Applied 001_initial.sql
+```
+
+Run it after every deployment; when there is nothing new it says so and exits.
+
+### Repositories
+
+All SQL lives in `app/database/repositories/`. A store maps between rows and
+objects and never writes a statement, so the business rules and the database
+stay apart.
+
+```
+UserManager ─► PostgresUserStore ─► UserRepository ─► PostgreSQL
+```
+
 ## Multi-Agent Architecture
 
 Every agent implements `BaseAgent`. The shared pipeline lives once in
@@ -440,8 +498,9 @@ Package `app.memory`, selected by `MEMORY_PROVIDER`.
 
 | Provider | State |
 | --- | --- |
-| `in_memory` | ✅ implemented, lost on restart, capped by `MEMORY_MAX_MESSAGES` |
-| `redis`, `sqlite`, `postgres`, `mongo` | registered |
+| `postgres` | ✅ implemented, survives a restart, capped by `MEMORY_MAX_MESSAGES` |
+| `in_memory` | ✅ implemented, demo, lost on restart |
+| `redis`, `sqlite`, `mongo` | registered |
 
 ### Retriever Registry
 
@@ -489,6 +548,19 @@ devops-mentor-ai/
 │   │   └── health.py             # component probes for /health
 │   ├── prompting/
 │   │   └── registry.py           # PromptRegistry: name -> prompt text
+│   ├── database/                 # connection pool, migrations, repositories
+│   │   ├── connection.py
+│   │   ├── migrations.py
+│   │   └── repositories/         # every SQL statement of the platform
+│   ├── conversations/            # stored history, the source of truth
+│   │   ├── models.py             # Conversation, ConversationMessage
+│   │   ├── base.py               # ConversationStore interface
+│   │   ├── registry.py
+│   │   ├── factory.py
+│   │   ├── in_memory.py          # demo
+│   │   ├── postgres.py
+│   │   ├── manager.py            # ConversationManager
+│   │   └── service.py            # ConversationService
 │   ├── users/                    # user profiles behind a registry
 │   │   ├── models.py             # UserProfile, usr_ identifiers
 │   │   ├── base.py               # UserStore interface
@@ -526,6 +598,7 @@ devops-mentor-ai/
 │   ├── keyboards.py              # menu and inline pickers
 │   └── texts.py                  # user facing text
 ├── docs/demo/                    # demo documentation for indexing
+├── migrations/                   # plain SQL, applied in name order
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
@@ -572,12 +645,17 @@ mean to change them.
 | --- | --- | --- |
 | `LLM_PROVIDER` | Chat provider | `gemini` |
 | `EMBEDDING_PROVIDER` | Embedding provider | `gemini` |
-| `MEMORY_PROVIDER` | Conversation memory | `in_memory` |
+| `MEMORY_PROVIDER` | Conversation memory | `postgres` |
 | `RETRIEVER_PROVIDER` | Retriever | `qdrant` |
 | `DEFAULT_AGENT` | Agent used when the request names none | `teacher` |
 | `MEMORY_MAX_MESSAGES` | Messages kept per chat by the in-process memory, `0` disables the cap | `100` |
-| `WORKSPACE_STORE` | Where runtime workspaces are kept | `in_memory` |
-| `USER_STORE` | Where user profiles are kept | `in_memory` |
+| `WORKSPACE_STORE` | Where runtime workspaces are kept | `postgres` |
+| `USER_STORE` | Where user profiles are kept | `postgres` |
+| `CONVERSATION_STORE` | Where the conversation history is kept | `postgres` |
+| `POSTGRES_HOST` | Database host; compose overrides it for containers | `localhost` |
+| `POSTGRES_PORT` | Database port | `5432` |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Database credentials | `mentor` |
+| `DATABASE_URL` | Full connection string; wins over the parts | — |
 | `DEFAULT_LANGUAGE` | Language a new profile starts with | `ru` |
 | `DEFAULT_TIMEZONE` | Timezone a new profile starts with | `UTC` |
 | `DEFAULT_CHAT_ID` | Conversation used when a request names no chat | `default` |

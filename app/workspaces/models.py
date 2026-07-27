@@ -1,4 +1,10 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime
+
+
+def now() -> datetime:
+    """Return the current moment in UTC."""
+    return datetime.now(UTC)
 
 #: Fields a caller may change at runtime. Kept in one place so a new field is
 #: added once instead of in the API, the bot and the manager.
@@ -35,6 +41,8 @@ class Workspace:
     retriever: str = ""
     collection: str = ""
     prompt: str = ""
+    created_at: datetime = field(default_factory=now)
+    updated_at: datetime = field(default_factory=now)
 
     def with_changes(self, **changes: str) -> "Workspace":
         """Return a copy with the given fields replaced.
@@ -48,21 +56,23 @@ class Workspace:
         """
         applied = {}
 
-        for field, value in changes.items():
+        for name, value in changes.items():
             if value is None:
                 continue
-            if field not in MUTABLE_FIELDS:
+            if name not in MUTABLE_FIELDS:
                 raise ValueError(
-                    f"Unknown workspace field: '{field}'. "
+                    f"Unknown workspace field: '{name}'. "
                     f"Known fields: {', '.join(MUTABLE_FIELDS)}."
                 )
-            applied[field] = value
+            applied[name] = value
 
-        return replace(self, **applied)
+        return replace(self, updated_at=now(), **applied)
 
     def as_dict(self) -> dict[str, str]:
         """Return the workspace as plain data for the API and the bot."""
         return {
             "chat_id": self.chat_id,
-            **{field: getattr(self, field) for field in MUTABLE_FIELDS},
+            **{name: getattr(self, name) for name in MUTABLE_FIELDS},
+            "created_at": self.created_at.isoformat(timespec="seconds"),
+            "updated_at": self.updated_at.isoformat(timespec="seconds"),
         }

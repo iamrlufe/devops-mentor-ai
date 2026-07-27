@@ -18,15 +18,17 @@ class Settings(BaseSettings):
     # Which implementation each replaceable layer uses.
     llm_provider: str = "gemini"
     embedding_provider: str = "gemini"
-    memory_provider: str = "in_memory"
+    memory_provider: str = "postgres"
     # Messages kept per chat by the in-process memory. 0 disables the cap.
     memory_max_messages: int = 100
     retriever_provider: str = "qdrant"
     default_agent: str = "teacher"
     # Where the runtime workspaces are kept.
-    workspace_store: str = "in_memory"
+    workspace_store: str = "postgres"
     # Where the user profiles are kept.
-    user_store: str = "in_memory"
+    user_store: str = "postgres"
+    # Where the conversation history is kept. This is the source of truth.
+    conversation_store: str = "postgres"
     # Conversation used when a request names no chat.
     default_chat_id: str = "default"
     # Defaults a profile starts with.
@@ -73,9 +75,31 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "mentor_documents"
 
+    # PostgreSQL. DATABASE_URL wins over the parts when it is set.
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    postgres_db: str = "mentor"
+    postgres_user: str = "mentor"
+    postgres_password: str = ""
+    database_url: str | None = None
+    database_pool_min: int = 1
+    database_pool_max: int = 10
+
     # Telegram bot
     telegram_token: str | None = None
     api_url: str | None = None
+
+    @property
+    def database_dsn(self) -> str:
+        """Return the libpq connection string of the platform database."""
+        if self.database_url:
+            return self.database_url
+
+        return (
+            f"host={self.postgres_host} port={self.postgres_port} "
+            f"dbname={self.postgres_db} user={self.postgres_user} "
+            f"password={self.postgres_password}"
+        )
 
 
 settings = Settings()

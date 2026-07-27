@@ -13,6 +13,12 @@ MUTABLE_FIELDS = (
     "timezone",
     "preferred_agent",
     "preferred_provider",
+    "last_agent",
+    "last_provider",
+    "last_seen",
+    "message_count",
+    "conversation_count",
+    "registration_source",
     "metadata",
 )
 
@@ -51,6 +57,13 @@ class UserProfile:
     updated_at: datetime = field(default_factory=now)
     preferred_agent: str = ""
     preferred_provider: str = ""
+    #: Activity, filled in as the user works. Optional for older profiles.
+    last_seen: datetime | None = None
+    last_agent: str = ""
+    last_provider: str = ""
+    message_count: int = 0
+    conversation_count: int = 0
+    registration_source: str = ""
     metadata: dict[str, str] = field(default_factory=dict)
 
     def with_changes(self, **changes: object) -> "UserProfile":
@@ -94,4 +107,14 @@ class UserProfile:
             "updated_at": self.updated_at.isoformat(timespec="seconds"),
             "preferred_agent": self.preferred_agent,
             "preferred_provider": self.preferred_provider,
+            "last_agent": self.last_agent,
+            "last_provider": self.last_provider,
+            "last_seen": (
+                self.last_seen.isoformat(timespec="seconds")
+                if self.last_seen
+                else ""
+            ),
+            "message_count": str(self.message_count),
+            "conversation_count": str(self.conversation_count),
+            "registration_source": self.registration_source,
         }

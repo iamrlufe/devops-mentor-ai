@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from app.agents.registry import AgentRegistry
 from app.api.health import build_health
 from app.config import settings
+from app.conversations.service import ConversationService
 from app.providers.registry import ProviderRegistry
 from app.workspaces.manager import WorkspaceManager
 
@@ -35,12 +36,13 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """The answer and the stack that produced it."""
+    """The answer, the stack that produced it and where it was recorded."""
 
     answer: str
     agent: str
     provider: str
     chat_id: str
+    conversation_id: str = ""
 
 
 class WorkspaceRequest(BaseModel):
@@ -166,11 +168,21 @@ def chat(request: ChatRequest) -> ChatResponse:
             detail=str(error),
         ) from error
 
+    conversation = ConversationService.record_exchange(
+        chat_id=context.workspace.chat_id,
+        agent=context.agent.name,
+        provider=context.runtime.selection["provider"],
+        question=request.message,
+        answer=answer,
+        user_id=context.workspace.user_id,
+    )
+
     return ChatResponse(
         answer=answer,
         agent=context.agent.name,
         provider=context.runtime.selection["provider"],
         chat_id=context.workspace.chat_id,
+        conversation_id=conversation.conversation_id if conversation else "",
     )
 
 

@@ -7,7 +7,10 @@ from app.users.registry import UserRegistry
 
 @UserRegistry.register("in_memory")
 class InMemoryUserStore(UserStore):
-    """Keeps the profiles in the process memory. They are lost on restart.
+    """Demo store: keeps the profiles in the process memory.
+
+    They are lost on restart, so this is the zero-setup option for trying the
+    platform out. `PostgresUserStore` is what a running deployment uses.
 
     The store is written from several handlers at once, so every access is
     guarded. The Telegram index is kept alongside the profiles so that looking a

@@ -15,6 +15,7 @@ from telegram.ext import (
 
 from app.config import settings
 from app.users.manager import UserManager
+from app.users.models import now
 from bot import keyboards, texts
 
 REQUEST_TIMEOUT = 60.0
@@ -202,6 +203,11 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if profile.phone:
         lines.append(f"Телефон: {profile.phone}")
 
+    if profile.last_seen:
+        lines.append(f"Последняя активность: {profile.last_seen:%Y-%m-%d %H:%M} UTC")
+
+    lines.append(f"Сообщений: {profile.message_count}")
+    lines.append(f"Диалогов: {profile.conversation_count}")
     lines.append(f"Дата регистрации: {profile.created_at:%Y-%m-%d %H:%M} UTC")
 
     await reply(update, "\n".join(lines))
@@ -495,7 +501,33 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await reply(update, texts.API_ERROR)
         return
 
+    if "answer" in body:
+        _record_activity(profile, body)
+
     await reply(update, str(body.get("error") or body.get("answer", texts.API_ERROR)))
+
+
+def _record_activity(profile, answer: dict) -> None:
+    """Remember when the user last wrote and what they were running on."""
+    conversations = profile.conversation_count
+
+    if answer.get("conversation_id") and answer["conversation_id"] not in (
+        profile.metadata.get("conversations", "")
+    ):
+        conversations += 1
+
+    UserManager.update(
+        profile.user_id,
+        last_seen=now(),
+        last_agent=answer.get("agent", ""),
+        last_provider=answer.get("provider", ""),
+        message_count=profile.message_count + 1,
+        conversation_count=conversations,
+        metadata={
+            **profile.metadata,
+            "conversations": answer.get("conversation_id", ""),
+        },
+    )
 
 
 COMMANDS: dict[str, Callable[[Update, ContextTypes.DEFAULT_TYPE], Awaitable]] = {

@@ -46,6 +46,7 @@ services:
     # reachable by its service name, not on localhost.
     environment:
       QDRANT_URL: http://qdrant:6333
+      POSTGRES_HOST: postgres
 
     # The documentation is data, not code: it is mounted instead of being baked
     # into the image, so indexing new files needs no rebuild.
@@ -58,8 +59,13 @@ services:
     restart: unless-stopped
     command: python -m bot.main
 
+    # The bot reads and writes profiles, so it needs the same database.
+    environment:
+      POSTGRES_HOST: postgres
+
     depends_on:
       - api
+      - postgres
 
     env_file:
       - .env

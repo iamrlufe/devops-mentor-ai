@@ -1,40 +1,25 @@
+from app.config import settings
+from app.database.repositories.memory_repository import MemoryRepository
 from app.memory.base import MemoryProvider
 from app.memory.models import Message
 from app.memory.registry import MemoryRegistry
 
-NOT_IMPLEMENTED = (
-    "The PostgreSQL memory provider is registered but not implemented yet. "
-    "Set MEMORY_PROVIDER to an implemented one, or implement PostgresMemoryProvider."
-)
-
 
 @MemoryRegistry.register("postgres")
 class PostgresMemoryProvider(MemoryProvider):
-    """Conversation history in PostgreSQL.
+    """Keeps the prompt window in PostgreSQL, so a restart keeps the thread.
 
-    Registered and selectable; the storage is not implemented yet.
+    Memory stays a short window: `MEMORY_MAX_MESSAGES` still bounds it, and the
+    conversation tables hold the full history, so trimming here loses nothing.
     """
 
     def load(self, chat_id: str) -> list[Message]:
-        """Not implemented yet.
+        rows = MemoryRepository.load(chat_id, settings.memory_max_messages)
 
-        Raises:
-            NotImplementedError: Always.
-        """
-        raise NotImplementedError(NOT_IMPLEMENTED)
+        return [Message(role=row["role"], content=row["content"]) for row in rows]
 
     def save(self, chat_id: str, role: str, text: str) -> None:
-        """Not implemented yet.
-
-        Raises:
-            NotImplementedError: Always.
-        """
-        raise NotImplementedError(NOT_IMPLEMENTED)
+        MemoryRepository.save(chat_id, role, text, settings.memory_max_messages)
 
     def clear(self, chat_id: str) -> None:
-        """Not implemented yet.
-
-        Raises:
-            NotImplementedError: Always.
-        """
-        raise NotImplementedError(NOT_IMPLEMENTED)
+        MemoryRepository.clear(chat_id)

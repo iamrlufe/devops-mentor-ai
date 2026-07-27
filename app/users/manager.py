@@ -40,6 +40,7 @@ class UserManager:
             telegram_id=str(telegram_id),
             language=settings.default_language,
             timezone=settings.default_timezone,
+            registration_source="telegram",
         )
         store.save(profile)
 
