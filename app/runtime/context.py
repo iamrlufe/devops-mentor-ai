@@ -86,7 +86,11 @@ class RuntimeContextBuilder:
             prompt=PromptRegistry.get(prompt_name),
             provider=ProviderFactory.create(provider_name),
             memory=MemoryFactory.create(memory_name),
-            retriever=RetrieverFactory.create(retriever_name, collection_name),
+            retriever=RetrieverFactory.create(
+                retriever_name,
+                collection_name,
+                embedding_name,
+            ),
             embedding=EmbeddingFactory.create(embedding_name),
             collection=collection_name,
             chat_id=chat_id or settings.default_chat_id,

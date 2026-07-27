@@ -16,7 +16,7 @@ class QdrantRetriever(Retriever):
         if not query.strip():
             return []
 
-        vector = EmbeddingFactory.create().embed_query(query)
+        vector = EmbeddingFactory.create(self.embedding).embed_query(query)
         results = VectorStoreService.search(vector, limit, self.collection)
 
         return [self._build_document(result) for result in results]

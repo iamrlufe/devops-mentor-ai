@@ -16,11 +16,15 @@ class RetrieverFactory:
     while reusing one client.
     """
 
-    _instances: ClassVar[dict[tuple[str, str], Retriever]] = {}
+    _instances: ClassVar[dict[tuple[str, str, str], Retriever]] = {}
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @staticmethod
-    def create(name: str = "", collection: str = "") -> Retriever:
+    def create(
+        name: str = "",
+        collection: str = "",
+        embedding: str = "",
+    ) -> Retriever:
         """Return a retriever.
 
         Args:
@@ -29,16 +33,18 @@ class RetrieverFactory:
             collection: Which collection to search. Empty means the shared one
                 from `QDRANT_COLLECTION`, which keeps every agent on one index
                 unless it declares its own.
+            embedding: Which embedding provider turns the query into a vector.
+                Empty means the configured one.
 
         Raises:
             ValueError: If the name is not registered.
         """
         implementation = RetrieverRegistry.get(name or settings.retriever_provider)
-        key = (implementation.__name__, collection)
+        key = (implementation.__name__, collection, embedding)
 
         return get_or_create(
             RetrieverFactory._instances,
             RetrieverFactory._lock,
             key,
-            lambda: implementation(collection=collection),
+            lambda: implementation(collection=collection, embedding=embedding),
         )

@@ -41,9 +41,11 @@ markdown documentation.
 ```
 User
   │
-Telegram Bot / REST API          POST /chat {"agent": "docker", "message": "..."}
+Telegram Bot / REST API          POST /chat {"chat_id": "123", "message": "..."}
   │
-AgentFactory ──► AgentRegistry   name -> agent class
+WorkspaceManager ──► AgentRegistry   workspace -> agent class
+  │
+RuntimeContextBuilder                names -> resolved stack
   │
 Agent (Teacher, Docker, SQL, ...)
   │
@@ -63,10 +65,12 @@ Agent (Teacher, Docker, SQL, ...)
 
 ### How a request is processed
 
-1. `POST /chat` carries a `message` and an optional `agent`; without it the
-   request goes to the teacher, exactly as before.
-2. `AgentFactory` asks `AgentRegistry` for the class and returns a cached
-   instance, so the provider and the clients are built once.
+1. `POST /chat` carries a `message`, an optional `chat_id` and an optional
+   `agent`; without them the request goes to the default workspace and the
+   default agent, exactly as before workspaces existed.
+2. `WorkspaceManager` reads the workspace of that chat and
+   `RuntimeContextBuilder` resolves its names into a `RuntimeContext`; the
+   agent is constructed with it and builds nothing itself.
 3. The agent loads the history of `agent:chat_id` — two agents in the same chat
    never read each other's conversation.
 4. The retriever embeds the question and searches Qdrant for the 5 closest
@@ -385,7 +389,6 @@ devops-mentor-ai/
 │   │   ├── base.py               # BaseAgent interface
 │   │   ├── conversational.py     # the shared pipeline of every agent
 │   │   ├── registry.py           # AgentRegistry
-│   │   ├── factory.py            # AgentFactory
 │   │   ├── teacher.py            # 13 agents, one file each
 │   │   └── ...
 │   ├── prompts/                  # one markdown system prompt per agent

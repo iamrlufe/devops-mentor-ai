@@ -10,14 +10,17 @@ class Retriever(ABC):
     different sets of documents through the same interface.
     """
 
-    def __init__(self, collection: str = "") -> None:
-        """Bind the retriever to a collection.
+    def __init__(self, collection: str = "", embedding: str = "") -> None:
+        """Bind the retriever to a collection and an embedding provider.
 
         Args:
             collection: Name of the collection to search. Empty means the
                 shared collection configured for the platform.
+            embedding: Name of the embedding provider used to turn the query
+                into a vector. Empty means the configured one.
         """
         self.collection = collection
+        self.embedding = embedding
 
     @abstractmethod
     def search(self, query: str, limit: int = 5) -> list[Document]:
