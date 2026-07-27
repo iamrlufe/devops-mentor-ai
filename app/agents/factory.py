@@ -1,5 +1,6 @@
 from app.agents.base import BaseAgent
-from app.agents.registry import DEFAULT_AGENT, AgentRegistry
+from app.agents.registry import AgentRegistry
+from app.config import settings
 
 
 class AgentFactory:
@@ -13,18 +14,19 @@ class AgentFactory:
     _instances: dict[str, BaseAgent] = {}
 
     @staticmethod
-    def create(name: str = DEFAULT_AGENT) -> BaseAgent:
+    def create(name: str = "") -> BaseAgent:
         """Return the agent registered under `name`.
 
         Args:
-            name: The agent to build. Defaults to the teacher, which keeps the
-                behaviour of the single agent the platform started with.
+            name: The agent to build. Empty means the agent configured by
+                `DEFAULT_AGENT`, which is what keeps requests without an agent
+                field working exactly as before.
 
         Raises:
             ValueError: If no agent is registered under that name.
         """
-        agent_class = AgentRegistry.get(name)
-        key = agent_class.name or name
+        agent_class = AgentRegistry.get(name or settings.default_agent)
+        key = agent_class.name or agent_class.__name__
 
         if key not in AgentFactory._instances:
             AgentFactory._instances[key] = agent_class()

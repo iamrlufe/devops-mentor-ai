@@ -1,17 +1,15 @@
 import logging
-from pathlib import Path
-from typing import ClassVar
 
 from app.agents.base import DEFAULT_CHAT_ID, BaseAgent
 from app.memory.factory import MemoryFactory
 from app.models.chat_message import ROLE_ASSISTANT, ROLE_USER, ChatMessage
+from app.prompting.registry import PromptRegistry
 from app.providers.factory import ProviderFactory
 from app.rag.context_builder import ContextBuilder
 from app.rag.factory import RetrieverFactory
 from app.services.prompt_builder import PromptBuilder
 
 RETRIEVAL_LIMIT = 5
-PROMPTS_DIRECTORY = Path(__file__).resolve().parents[1] / "prompts"
 
 logger = logging.getLogger(__name__)
 
@@ -20,19 +18,22 @@ class ConversationalAgent(BaseAgent):
     """An agent that answers with its system prompt, the indexed documentation
     and the history of the conversation.
 
-    Every agent of the platform shares this pipeline and differs only by its
-    system prompt and its capabilities, so a new agent is a subclass with a few
-    class attributes and no duplicated logic.
+    Every agent of the platform shares this pipeline and differs only by the
+    class attributes it declares, so a new agent is a subclass with no
+    duplicated logic. The pipeline resolves the prompt through the
+    `PromptRegistry` and the rest of the stack through factories, which is why
+    an agent can run on another model, memory or collection without any change
+    here.
     """
 
-    #: Name of the file in `app/prompts` that holds the system prompt.
-    prompt_file: ClassVar[str] = ""
-
     def __init__(self) -> None:
-        self.system_prompt = self._load_system_prompt()
-        self.provider = ProviderFactory.create()
-        self.memory = MemoryFactory.create()
-        self.retriever = RetrieverFactory.create()
+        self.system_prompt = PromptRegistry.get(self.prompt)
+        self.provider = ProviderFactory.create(self.default_provider)
+        self.memory = MemoryFactory.create(self.default_memory)
+        self.retriever = RetrieverFactory.create(
+            self.default_retriever,
+            self.collection,
+        )
 
     def ask(self, prompt: str, chat_id: str = DEFAULT_CHAT_ID) -> str:
         """Answer the question and store both sides of the exchange."""
@@ -68,27 +69,3 @@ class ConversationalAgent(BaseAgent):
         """Namespace the history by agent, so two agents in the same chat do not
         read each other's conversation."""
         return f"{self.name}:{chat_id}" if self.name else chat_id
-
-    @classmethod
-    def _load_system_prompt(cls) -> str:
-        """Read the system prompt of the agent.
-
-        Raises:
-            FileNotFoundError: If the agent declares no prompt file, or the file
-                is missing.
-        """
-        if not cls.prompt_file:
-            raise FileNotFoundError(
-                f"Agent '{cls.name or cls.__name__}' declares no prompt_file. "
-                f"Add one and put the prompt into {PROMPTS_DIRECTORY}."
-            )
-
-        prompt_path = PROMPTS_DIRECTORY / cls.prompt_file
-
-        if not prompt_path.is_file():
-            raise FileNotFoundError(
-                f"System prompt file was not found: {prompt_path}. "
-                f"Agent '{cls.name or cls.__name__}' cannot start without it."
-            )
-
-        return prompt_path.read_text(encoding="utf-8")

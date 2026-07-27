@@ -7,7 +7,7 @@ from app.embeddings.models import Embedding
 from app.vectorstore.base import VectorStore
 from app.vectorstore.models import SearchResult
 
-COLLECTION_NAME = "mentor_documents"
+COLLECTION_NAME = settings.qdrant_collection
 DISTANCE = models.Distance.COSINE
 POINT_ID_NAMESPACE = uuid.UUID("6f6f9d2c-2a5e-4a5f-9c2b-6c5a1d3e7b41")
 UPSERT_BATCH_SIZE = 100
@@ -18,8 +18,9 @@ PAYLOAD_METADATA = "metadata"
 
 class QdrantVectorStore(VectorStore):
 
-    def __init__(self, collection_name: str = COLLECTION_NAME):
-        self.collection_name = collection_name
+    def __init__(self, collection_name: str = "") -> None:
+        """Bind the store to a collection, defaulting to the shared one."""
+        self.collection_name = collection_name or settings.qdrant_collection
         self.client = QdrantClient(url=settings.qdrant_url)
 
     def create_collection(self, vector_size: int) -> None:

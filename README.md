@@ -22,10 +22,15 @@ markdown documentation.
 - **RAG** — retrieved documentation is injected as a separate system message.
 - **Vector Search** — semantic search over Qdrant with cosine distance.
 - **Conversation Memory** — per agent and per chat, behind `MemoryProvider`.
-- **Prompt System** — one markdown prompt per agent in `app/prompts/`.
+- **Prompt System** — a `PromptRegistry` resolves prompts by name from
+  markdown files or from memory, so an agent never touches the filesystem.
 - **Document Indexing** — one command turns markdown into a searchable index.
 - **Capabilities** — agents and providers describe what they can do, ready for
   a coordinator that routes a question to the right agent.
+- **Per-agent collections** — every agent may search its own vector
+  collection, or share the platform one.
+- **Versioned API** — `/api/v1/...`, with the original paths still served.
+- **Health reporting** — `/health` reports the state of every component.
 - **Docker Deployment** — the whole stack starts with one compose command.
 
 ## Architecture
@@ -87,17 +92,39 @@ Every agent implements `BaseAgent`. The shared pipeline lives once in
 class DockerAgent(ConversationalAgent):
     name: ClassVar[str] = "docker"
     description: ClassVar[str] = "Docker images, containers and compose"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("containers", "build")
     capabilities: ClassVar[tuple[str, ...]] = ("docker", "containers")
-    prompt_file: ClassVar[str] = "docker.md"
+    prompt: ClassVar[str] = "docker"
 ```
+
+An agent is described, not programmed. Besides its identity it may declare the
+stack it runs on, and an empty value means "follow the platform settings":
+
+```python
+    default_provider: ClassVar[str] = "groq"          # this agent uses Groq
+    default_embedding: ClassVar[str] = ""             # platform default
+    default_memory: ClassVar[str] = ""                # platform default
+    default_retriever: ClassVar[str] = ""             # platform default
+    collection: ClassVar[str] = "docker_documents"    # its own documents
+```
+
+Nothing in the agent pipeline changes when these values change: the prompt is
+resolved through the `PromptRegistry` and the rest through the factories.
 
 Adding an agent takes two files and touches no existing code:
 
 1. `app/agents/<name>.py` with the decorated class.
-2. `app/prompts/<name>.md` with its system prompt.
+2. `app/prompts/<name>.md` with its system prompt — or a
+   `PromptRegistry.register("<name>", "...")` call, since prompts do not have
+   to come from disk.
 
-A missing prompt file is refused at construction with a message naming the file
-and the agent, so a half-configured agent never reaches a user.
+A missing prompt is refused at construction with a message naming the prompt and
+where to put it, so a half-configured agent never reaches a user.
+
+`GET /agents` returns the full metadata of every agent: version, author, tags,
+capabilities and the stack it declares.
 
 | Agent | Capabilities |
 | --- | --- |
@@ -143,6 +170,19 @@ Package `app.agents`, selected per request or by `DEFAULT_AGENT`.
 
 Package `app.providers`, selected by `LLM_PROVIDER`.
 
+Currently implemented providers
+
+- Gemini
+- Groq
+
+Architecture supports
+
+- OpenAI
+- Claude
+- Ollama
+- OpenRouter
+- Azure OpenAI
+
 | Provider | State | Capabilities |
 | --- | --- | --- |
 | `gemini` | ✅ implemented | chat, vision, files, json, reasoning |
@@ -163,7 +203,7 @@ Package `app.embeddings`, selected by `EMBEDDING_PROVIDER`.
 | Provider | State |
 | --- | --- |
 | `gemini` | ✅ implemented, 3072 dimensions |
-| `openai`, `voyageai`, `ollama`, `jina` | registered |
+| `openai`, `voyageai`, `ollama`, `azure_openai`, `jina` | registered |
 
 ### Memory Registry
 
@@ -187,6 +227,27 @@ Package `app.rag`, selected by `RETRIEVER_PROVIDER`.
 A *registered* implementation is selectable and wired to its configuration, but
 its methods raise `NotImplementedError` with a message naming what to implement.
 
+### Collections
+
+Every agent may search its own collection. An agent that declares nothing uses
+the shared collection from `QDRANT_COLLECTION`, which is what all shipped agents
+do, so one index serves the whole platform out of the box.
+
+```python
+class DockerAgent(ConversationalAgent):
+    collection: ClassVar[str] = "docker_documents"
+```
+
+Index that collection by naming it:
+
+```bash
+docker compose exec api python -m app.scripts.index_docs docs/docker docker_documents
+```
+
+The retriever, the vector store factory and the indexer all take the collection
+as an argument, so a per-agent index needs no code change — only the attribute
+and a run of the indexer.
+
 ## Project Structure
 
 ```
@@ -194,6 +255,11 @@ devops-mentor-ai/
 ├── app/
 │   ├── core/
 │   │   └── registry.py           # the generic Registry every layer reuses
+│   ├── api/
+│   │   ├── routes.py             # handlers, mounted at /api/v1 and at /
+│   │   └── health.py             # component probes for /health
+│   ├── prompting/
+│   │   └── registry.py           # PromptRegistry: name -> prompt text
 │   ├── agents/
 │   │   ├── base.py               # BaseAgent interface
 │   │   ├── conversational.py     # the shared pipeline of every agent
@@ -279,6 +345,7 @@ mean to change them.
 | `GROQ_MODEL` | Groq model | `llama-3.3-70b-versatile` |
 | `GROQ_BASE_URL` | OpenAI-compatible endpoint | `https://api.groq.com/openai/v1` |
 | `QDRANT_URL` | Qdrant address | `http://localhost:6333` |
+| `QDRANT_COLLECTION` | Collection shared by agents that declare none | `mentor_documents` |
 | `TELEGRAM_TOKEN` | Bot token from BotFather | — |
 | `API_URL` | Chat endpoint the bot calls | `http://api:8000/chat` |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Read by docker-compose | — |
@@ -303,6 +370,13 @@ The first heading becomes the title, empty files are skipped.
 docker compose exec api python -m app.scripts.index_docs docs
 ```
 
+The second argument selects a collection, which is how an agent with its own
+collection is indexed:
+
+```bash
+docker compose exec api python -m app.scripts.index_docs docs docker_documents
+```
+
 ```
 Loading...
 Chunking...
@@ -317,40 +391,76 @@ Indexed: 3
 ```
 
 The collection is recreated on every run, so the index never mixes new documents
-with the previous ones. All agents share the same index.
+with the previous ones.
 
 ## REST API
 
-### `GET /health`
+Every endpoint is served twice: under `/api/v1` as the documented API, and on
+the original path for clients written before versioning. The two mounts share
+one implementation, so they can never drift apart.
+
+```
+/api/v1/health   ==   /health
+/api/v1/agents   ==   /agents
+/api/v1/chat     ==   /chat
+```
+
+### `GET /api/v1/health`
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/api/v1/health
 ```
 
 ```json
-{"status": "ok"}
+{
+  "status": "ok",
+  "name": "DevOps Mentor AI Platform",
+  "version": "1.0.0",
+  "llm_provider": "gemini",
+  "embedding_provider": "gemini",
+  "memory_provider": "in_memory",
+  "retriever_provider": "qdrant",
+  "vector_store": {"url": "http://qdrant:6333", "collection": "mentor_documents"},
+  "components": [
+    {"name": "llm:gemini", "status": "ok"},
+    {"name": "embedding:gemini", "status": "ok"},
+    {"name": "memory:in_memory", "status": "ok"},
+    {"name": "retriever:qdrant", "status": "ok"},
+    {"name": "vector_store:mentor_documents", "status": "ok"}
+  ]
+}
 ```
 
-### `GET /agents`
+The top level `status` is `ok` while every component answers and `degraded` when
+one of them fails, with the reason in that component's `detail`. A failing
+component never turns the health check itself into an error.
+
+### `GET /api/v1/agents`
 
 ```bash
-curl http://localhost:8000/agents
+curl http://localhost:8000/api/v1/agents
 ```
 
 ```json
 {
   "default": "teacher",
   "agents": [
-    {"name": "ansible", "description": "Ansible playbooks and configuration management",
-     "capabilities": ["ansible", "configuration_management"]}
+    {"name": "docker", "description": "Docker images, containers and compose",
+     "version": "1.0.0", "author": "DevOps Mentor AI Platform",
+     "tags": ["containers", "build"], "capabilities": ["docker", "containers"],
+     "prompt": "docker", "provider": "", "embedding": "", "memory": "",
+     "retriever": "", "collection": ""}
   ]
 }
 ```
 
-### `POST /chat`
+An empty `provider`, `embedding`, `memory`, `retriever` or `collection` means
+the agent follows the platform settings.
+
+### `POST /api/v1/chat`
 
 ```bash
-curl -X POST http://localhost:8000/chat \
+curl -X POST http://localhost:8000/api/v1/chat \
   -H "Content-Type: application/json" \
   -d '{"agent": "docker", "message": "How do I build an image?"}'
 ```
@@ -380,14 +490,16 @@ later is a change in the bot only — the platform already accepts the field.
 
 ## Roadmap
 
-### v1.1 — current
+### v1.0 — current
 
 - Multi-agent platform: 13 agents, agent selection in the API
 - Five registries on one generic implementation
-- Groq provider implemented next to Gemini
-- Capabilities on agents and providers
+- Gemini and Groq providers implemented
+- Declarative agents: metadata plus the provider, memory, retriever, collection
+  and prompt they run on
+- Prompt registry, per-agent collections, versioned API, component health
 
-### v1.2
+### v1.1
 
 - `CoordinatorAgent` that routes a question by capabilities
 - Persistent memory (PostgreSQL, Redis) and a real `chat_id` in the API

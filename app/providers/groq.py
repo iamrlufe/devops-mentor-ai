@@ -9,6 +9,8 @@ from app.providers.registry import ProviderRegistry
 
 CHAT_COMPLETIONS_PATH = "/chat/completions"
 REQUEST_TIMEOUT = 60.0
+TOO_MANY_REQUESTS = 429
+UNAUTHORIZED_STATUSES = frozenset({401, 403})
 
 
 @ProviderRegistry.register("groq")
@@ -56,9 +58,11 @@ class GroqProvider(BaseProvider):
             response.raise_for_status()
             body = response.json()
         except httpx.HTTPStatusError as error:
+            raise RuntimeError(self._describe_status(error)) from error
+        except httpx.TimeoutException as error:
             raise RuntimeError(
-                f"Groq API request failed ({error.response.status_code}): "
-                f"{error.response.text}"
+                f"Groq did not answer within {REQUEST_TIMEOUT:g} seconds. "
+                "Try a shorter prompt or a faster model."
             ) from error
         except httpx.HTTPError as error:
             raise RuntimeError(
@@ -68,6 +72,25 @@ class GroqProvider(BaseProvider):
             raise RuntimeError("Groq returned a malformed response.") from error
 
         return self._extract_answer(body)
+
+    @staticmethod
+    def _describe_status(error: httpx.HTTPStatusError) -> str:
+        """Turn an HTTP error into a message that says what to do about it."""
+        status = error.response.status_code
+        detail = error.response.text.strip()
+
+        if status == TOO_MANY_REQUESTS:
+            retry_after = error.response.headers.get("retry-after")
+            wait = f" Retry after {retry_after} seconds." if retry_after else ""
+            return f"Groq rate limit reached (429).{wait} {detail}".strip()
+
+        if status in UNAUTHORIZED_STATUSES:
+            return (
+                f"Groq rejected the API key ({status}). Check GROQ_API_KEY. "
+                f"{detail}"
+            ).strip()
+
+        return f"Groq API request failed ({status}): {detail}"
 
     @staticmethod
     def _extract_answer(body: dict) -> str:

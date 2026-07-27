@@ -4,23 +4,27 @@ from app.memory.registry import MemoryRegistry
 
 
 class MemoryFactory:
-    """Builds the memory provider selected by the `MEMORY_PROVIDER` setting.
+    """Builds the memory provider selected by `MEMORY_PROVIDER`, or the one asked for.
 
-    The factory knows the registry and nothing else. Instances are shared for
-    the whole process, which is what keeps the conversation history alive.
+    The factory knows the registry and nothing else. Instances are shared per
+    implementation, so the clients behind them are built once.
     """
 
     _instances: dict[str, MemoryProvider] = {}
 
     @staticmethod
-    def create() -> MemoryProvider:
-        """Return the configured memory provider.
+    def create(name: str = "") -> MemoryProvider:
+        """Return a memory provider.
+
+        Args:
+            name: Which implementation to build. Empty means the one configured
+                by `MEMORY_PROVIDER`, which lets an agent declare its own without any
+                change to the calling code.
 
         Raises:
-            ValueError: If `MEMORY_PROVIDER` names something that is not registered.
+            ValueError: If the name is not registered.
         """
-        name = settings.memory_provider
-        implementation = MemoryRegistry.get(name)
+        implementation = MemoryRegistry.get(name or settings.memory_provider)
         key = implementation.__name__
 
         if key not in MemoryFactory._instances:

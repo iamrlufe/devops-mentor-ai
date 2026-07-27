@@ -11,4 +11,7 @@ class KubernetesAgent(ConversationalAgent):
     name: ClassVar[str] = "kubernetes"
     description: ClassVar[str] = "Kubernetes workloads and operations"
     capabilities: ClassVar[tuple[str, ...]] = ("kubernetes", "orchestration")
-    prompt_file: ClassVar[str] = "kubernetes.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("containers", "orchestration")
+    prompt: ClassVar[str] = "kubernetes"

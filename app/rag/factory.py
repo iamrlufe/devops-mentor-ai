@@ -4,26 +4,34 @@ from app.rag.registry import RetrieverRegistry
 
 
 class RetrieverFactory:
-    """Builds the retriever selected by the `RETRIEVER_PROVIDER` setting.
+    """Builds the retriever selected by `RETRIEVER_PROVIDER`, or the one asked
+    for, against the collection asked for.
 
-    The factory knows the registry and nothing else. Instances are shared for
-    the whole process.
+    The factory knows the registry and nothing else. Instances are shared per
+    implementation and collection, so every agent may search its own collection
+    while reusing one client.
     """
 
-    _instances: dict[str, Retriever] = {}
+    _instances: dict[tuple[str, str], Retriever] = {}
 
     @staticmethod
-    def create() -> Retriever:
-        """Return the configured retriever.
+    def create(name: str = "", collection: str = "") -> Retriever:
+        """Return a retriever.
+
+        Args:
+            name: Which retriever to build. Empty means the one configured by
+                `RETRIEVER_PROVIDER`.
+            collection: Which collection to search. Empty means the shared one
+                from `QDRANT_COLLECTION`, which keeps every agent on one index
+                unless it declares its own.
 
         Raises:
-            ValueError: If `RETRIEVER_PROVIDER` names something that is not registered.
+            ValueError: If the name is not registered.
         """
-        name = settings.retriever_provider
-        implementation = RetrieverRegistry.get(name)
-        key = implementation.__name__
+        implementation = RetrieverRegistry.get(name or settings.retriever_provider)
+        key = (implementation.__name__, collection)
 
         if key not in RetrieverFactory._instances:
-            RetrieverFactory._instances[key] = implementation()
+            RetrieverFactory._instances[key] = implementation(collection=collection)
 
         return RetrieverFactory._instances[key]

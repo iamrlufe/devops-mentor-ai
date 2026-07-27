@@ -11,4 +11,7 @@ class TerraformAgent(ConversationalAgent):
     name: ClassVar[str] = "terraform"
     description: ClassVar[str] = "Terraform and infrastructure as code"
     capabilities: ClassVar[tuple[str, ...]] = ("terraform", "iac")
-    prompt_file: ClassVar[str] = "terraform.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("iac", "cloud")
+    prompt: ClassVar[str] = "terraform"

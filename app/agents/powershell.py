@@ -11,4 +11,7 @@ class PowerShellAgent(ConversationalAgent):
     name: ClassVar[str] = "powershell"
     description: ClassVar[str] = "PowerShell scripting and Windows administration"
     capabilities: ClassVar[tuple[str, ...]] = ("powershell", "windows", "scripting")
-    prompt_file: ClassVar[str] = "powershell.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("windows", "scripting")
+    prompt: ClassVar[str] = "powershell"

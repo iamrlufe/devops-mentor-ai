@@ -31,11 +31,18 @@ class DocumentIndexer:
     def index(
         directory: Path,
         on_step: Callable[[str], None] | None = None,
+        collection: str = "",
     ) -> IndexStats:
         """Load, chunk, embed and store every document of the directory.
 
         The collection is dropped right before the upload, so the index never
         mixes the new documents with the previous ones.
+
+        Args:
+            directory: Where the markdown files live.
+            on_step: Called with each step name, for progress output.
+            collection: Which collection to fill. Empty means the shared one,
+                so an agent with its own collection is indexed by naming it.
         """
         report = on_step or (lambda step: None)
 
@@ -54,8 +61,8 @@ class DocumentIndexer:
         embeddings = EmbeddingService.embed_chunks(chunks)
 
         report(STEP_UPLOADING)
-        VectorStoreFactory.create().delete_collection()
-        indexed = VectorStoreService.index_embeddings(embeddings)
+        VectorStoreFactory.create(collection).delete_collection()
+        indexed = VectorStoreService.index_embeddings(embeddings, collection)
 
         report(STEP_DONE)
 

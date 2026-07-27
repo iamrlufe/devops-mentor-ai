@@ -58,8 +58,9 @@ class Settings(BaseSettings):
     voyageai_api_key: str | None = None
     jina_api_key: str | None = None
 
-    # Vector store
+    # Vector store. Agents share this collection unless they declare their own.
     qdrant_url: str = "http://localhost:6333"
+    qdrant_collection: str = "mentor_documents"
 
     # Telegram bot
     telegram_token: str | None = None

@@ -11,4 +11,7 @@ class DockerAgent(ConversationalAgent):
     name: ClassVar[str] = "docker"
     description: ClassVar[str] = "Docker images, containers and compose"
     capabilities: ClassVar[tuple[str, ...]] = ("docker", "containers")
-    prompt_file: ClassVar[str] = "docker.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("containers", "build")
+    prompt: ClassVar[str] = "docker"

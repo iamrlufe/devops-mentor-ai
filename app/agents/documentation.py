@@ -11,4 +11,7 @@ class DocumentationAgent(ConversationalAgent):
     name: ClassVar[str] = "documentation"
     description: ClassVar[str] = "Technical writing: READMEs, runbooks, API docs"
     capabilities: ClassVar[tuple[str, ...]] = ("documentation", "writing")
-    prompt_file: ClassVar[str] = "documentation.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("writing", "docs")
+    prompt: ClassVar[str] = "documentation"

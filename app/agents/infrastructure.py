@@ -11,4 +11,7 @@ class InfrastructureAgent(ConversationalAgent):
     name: ClassVar[str] = "infrastructure"
     description: ClassVar[str] = "Infrastructure design and operations"
     capabilities: ClassVar[tuple[str, ...]] = ("infrastructure", "devops")
-    prompt_file: ClassVar[str] = "infrastructure.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("infrastructure", "operations")
+    prompt: ClassVar[str] = "infrastructure"

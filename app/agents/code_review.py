@@ -11,4 +11,7 @@ class CodeReviewAgent(ConversationalAgent):
     name: ClassVar[str] = "codereview"
     description: ClassVar[str] = "Code review for correctness and maintainability"
     capabilities: ClassVar[tuple[str, ...]] = ("review", "code_quality")
-    prompt_file: ClassVar[str] = "codereview.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("quality", "review")
+    prompt: ClassVar[str] = "codereview"

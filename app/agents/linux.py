@@ -11,4 +11,7 @@ class LinuxAgent(ConversationalAgent):
     name: ClassVar[str] = "linux"
     description: ClassVar[str] = "Linux administration and shell"
     capabilities: ClassVar[tuple[str, ...]] = ("linux", "shell", "administration")
-    prompt_file: ClassVar[str] = "linux.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("linux", "operations")
+    prompt: ClassVar[str] = "linux"

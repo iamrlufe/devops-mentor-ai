@@ -50,4 +50,7 @@ def create_application() -> Application:
 
 def run() -> None:
     logging.basicConfig(level=logging.INFO)
+    # httpx logs every request URL, and the Telegram token is part of that
+    # URL, so INFO logging would print the token into the container logs.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     create_application().run_polling()

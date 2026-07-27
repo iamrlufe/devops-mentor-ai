@@ -15,4 +15,7 @@ class TeacherAgent(ConversationalAgent):
     name: ClassVar[str] = "teacher"
     description: ClassVar[str] = "DevOps mentor for step by step learning"
     capabilities: ClassVar[tuple[str, ...]] = ("learning", "devops", "mentoring")
-    prompt_file: ClassVar[str] = "teacher.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("learning", "devops")
+    prompt: ClassVar[str] = "teacher"

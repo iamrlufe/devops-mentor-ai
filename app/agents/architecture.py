@@ -11,4 +11,7 @@ class ArchitectureAgent(ConversationalAgent):
     name: ClassVar[str] = "architecture"
     description: ClassVar[str] = "System design and architecture decisions"
     capabilities: ClassVar[tuple[str, ...]] = ("design", "architecture")
-    prompt_file: ClassVar[str] = "architecture.md"
+    version: ClassVar[str] = "1.0.0"
+    author: ClassVar[str] = "DevOps Mentor AI Platform"
+    tags: ClassVar[tuple[str, ...]] = ("design", "planning")
+    prompt: ClassVar[str] = "architecture"

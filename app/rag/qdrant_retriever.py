@@ -10,14 +10,14 @@ TEXT_KEY = "text"
 
 @RetrieverRegistry.register("qdrant")
 class QdrantRetriever(Retriever):
-    """Searches the indexed chunks by the meaning of the query."""
+    """Searches the indexed chunks of its collection by meaning."""
 
     def search(self, query: str, limit: int = 5) -> list[Document]:
         if not query.strip():
             return []
 
         vector = EmbeddingFactory.create().embed_query(query)
-        results = VectorStoreService.search(vector, limit)
+        results = VectorStoreService.search(vector, limit, self.collection)
 
         return [self._build_document(result) for result in results]
 
