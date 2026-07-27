@@ -34,6 +34,13 @@ class GeminiProvider(BaseProvider):
         "json",
         "reasoning",
     )
+    implemented: ClassVar[bool] = True
+    supports_stream: ClassVar[bool] = True
+    supports_tools: ClassVar[bool] = True
+    supports_vision: ClassVar[bool] = True
+    supports_function_calling: ClassVar[bool] = True
+    supports_json: ClassVar[bool] = True
+    context_window: ClassVar[int] = 1048576
 
     def __init__(self) -> None:
         api_key = settings.gemini_api_key

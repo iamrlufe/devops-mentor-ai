@@ -101,6 +101,17 @@ class Registry(Generic[T]):
         return implementation
 
     @classmethod
+    def name_of(cls, implementation: type[T]) -> str:
+        """Return the name a class is registered under, or an empty string."""
+        cls.load()
+
+        for name, registered in cls._entries.items():
+            if registered is implementation:
+                return name
+
+        return ""
+
+    @classmethod
     def available(cls) -> list[str]:
         """Return the names of every registered implementation, sorted."""
         cls.load()

@@ -1,12 +1,9 @@
 import logging
 
 from app.agents.base import DEFAULT_CHAT_ID, BaseAgent
-from app.memory.factory import MemoryFactory
 from app.models.chat_message import ROLE_ASSISTANT, ROLE_USER, ChatMessage
-from app.prompting.registry import PromptRegistry
-from app.providers.factory import ProviderFactory
 from app.rag.context_builder import ContextBuilder
-from app.rag.factory import RetrieverFactory
+from app.runtime.context import RuntimeContext, RuntimeContextBuilder
 from app.services.prompt_builder import PromptBuilder
 
 RETRIEVAL_LIMIT = 5
@@ -20,24 +17,28 @@ class ConversationalAgent(BaseAgent):
 
     Every agent of the platform shares this pipeline and differs only by the
     class attributes it declares, so a new agent is a subclass with no
-    duplicated logic. The pipeline resolves the prompt through the
-    `PromptRegistry` and the rest of the stack through factories, which is why
-    an agent can run on another model, memory or collection without any change
-    here.
+    duplicated logic. The agent creates nothing: it receives a `RuntimeContext`
+    with the prompt, the provider, the memory and the retriever already
+    resolved, which is what lets a workspace run it on another stack.
     """
 
-    def __init__(self) -> None:
-        self.system_prompt = PromptRegistry.get(self.prompt)
-        self.provider = ProviderFactory.create(self.default_provider)
-        self.memory = MemoryFactory.create(self.default_memory)
-        self.retriever = RetrieverFactory.create(
-            self.default_retriever,
-            self.collection,
-        )
+    def __init__(self, context: RuntimeContext | None = None) -> None:
+        """Bind the agent to a runtime context.
+
+        Args:
+            context: The resolved stack to run on. Without one the agent builds
+                the context from what it declares, which keeps `Agent()` working
+                exactly as before workspaces existed.
+        """
+        self.context = context or RuntimeContextBuilder.build(type(self))
+        self.system_prompt = self.context.prompt
+        self.provider = self.context.provider
+        self.memory = self.context.memory
+        self.retriever = self.context.retriever
 
     def ask(self, prompt: str, chat_id: str = DEFAULT_CHAT_ID) -> str:
         """Answer the question and store both sides of the exchange."""
-        key = self._memory_key(chat_id)
+        key = self.memory_key(chat_id)
 
         history = [
             ChatMessage(role=item.role, content=item.content)
@@ -65,7 +66,10 @@ class ConversationalAgent(BaseAgent):
 
         return ContextBuilder.build(documents)
 
-    def _memory_key(self, chat_id: str) -> str:
-        """Namespace the history by agent, so two agents in the same chat do not
-        read each other's conversation."""
+    def memory_key(self, chat_id: str) -> str:
+        """Return the key this agent stores the history of a chat under.
+
+        The history is namespaced by agent, so two agents in the same chat do
+        not read each other's conversation.
+        """
         return f"{self.name}:{chat_id}" if self.name else chat_id

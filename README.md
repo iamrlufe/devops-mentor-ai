@@ -27,6 +27,9 @@ markdown documentation.
 - **Document Indexing** — one command turns markdown into a searchable index.
 - **Capabilities** — agents and providers describe what they can do, ready for
   a coordinator that routes a question to the right agent.
+- **Runtime Workspaces** — every user picks their own agent, provider,
+  embedding, memory, retriever and collection at runtime, without
+  affecting anyone else.
 - **Per-agent collections** — every agent may search its own vector
   collection, or share the platform one.
 - **Versioned API** — `/api/v1/...`, with the original paths still served.
@@ -80,6 +83,124 @@ The indexing pipeline is separate and runs on demand:
 
 ```
 docs/*.md → DocumentLoader → Chunker → Embeddings → Qdrant
+```
+
+## Workspace Architecture
+
+A workspace is the stack one user works with. Switching an agent or a provider
+changes that user's workspace only; everyone else keeps working on theirs.
+
+```
+User
+  │
+Workspace          agent, provider, embedding, memory, retriever, collection
+  │
+Agent              receives a RuntimeContext, builds nothing itself
+  │
+Provider           Gemini / Groq / ...
+  │
+Embedding          the query vector
+  │
+Retriever          searches the collection of the workspace
+  │
+Vector Store       Qdrant
+```
+
+Every field holds a **name**, never an object, and an empty name falls through
+three levels: what the workspace sets, then what the agent declares, then the
+platform settings. `RuntimeContextBuilder` resolves those names once per
+request and hands the agent a `RuntimeContext` — the agent itself never touches
+a factory, a registry or a setting.
+
+### REST
+
+Read a workspace, with what it resolves to:
+
+```bash
+curl "http://localhost:8000/api/v1/workspace?chat_id=123"
+```
+
+```json
+{
+  "workspace": {"chat_id": "123", "agent": "", "provider": "", "embedding": "",
+                "memory": "", "retriever": "", "collection": "", "prompt": ""},
+  "resolved": {"chat_id": "123", "agent": "teacher", "provider": "gemini",
+               "embedding": "gemini", "memory": "in_memory",
+               "retriever": "qdrant", "collection": "mentor_documents",
+               "prompt": "teacher"}
+}
+```
+
+Change the stack of one user:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/workspace \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id": "123", "agent": "docker", "provider": "groq"}'
+```
+
+```json
+{"success": true, "workspace": {"chat_id": "123", "agent": "docker",
+ "provider": "groq", "embedding": "", "memory": "", "retriever": "",
+ "collection": "", "prompt": ""}}
+```
+
+Every later message of that chat runs on the Docker agent and Groq:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id": "123", "message": "How do I build an image?"}'
+```
+
+```json
+{"answer": "...", "agent": "docker", "provider": "groq", "chat_id": "123"}
+```
+
+Other endpoints: `GET /api/v1/workspaces` lists every workspace in use,
+`GET /api/v1/workspace/{chat_id}` reads one, `GET /api/v1/providers` lists what
+each provider supports.
+
+Selecting a provider that is registered but not implemented is refused with a
+message naming the ones that work, so a workspace never ends up unusable:
+
+```json
+{"detail": "Provider 'openai' is registered but not implemented yet. Implemented providers: gemini, groq."}
+```
+
+### Telegram
+
+The bot uses the Telegram chat id as the workspace key, so every chat has its
+own stack.
+
+```
+/agents              list the agents
+/providers           list the providers and whether each one works yet
+/agent docker        switch this chat to the Docker agent
+/provider groq       switch this chat to Groq
+/workspace           show what this chat runs on
+```
+
+`/workspace` answers with the resolved stack:
+
+```
+Agent:
+docker
+
+Provider:
+groq
+
+Embedding:
+gemini
+
+Retriever:
+qdrant
+
+Memory:
+in_memory
+
+Collection:
+mentor_documents
 ```
 
 ## Multi-Agent Architecture
@@ -339,6 +460,8 @@ mean to change them.
 | `RETRIEVER_PROVIDER` | Retriever | `qdrant` |
 | `DEFAULT_AGENT` | Agent used when the request names none | `teacher` |
 | `MEMORY_MAX_MESSAGES` | Messages kept per chat by the in-process memory, `0` disables the cap | `100` |
+| `WORKSPACE_STORE` | Where runtime workspaces are kept | `in_memory` |
+| `DEFAULT_CHAT_ID` | Conversation used when a request names no chat | `default` |
 | `GEMINI_API_KEY` | Gemini API key. Required | — |
 | `GEMINI_MODEL` | Model used for answers | `gemini-2.5-flash` |
 | `GEMINI_EMBEDDING_MODEL` | Model used for embeddings | `gemini-embedding-001` |

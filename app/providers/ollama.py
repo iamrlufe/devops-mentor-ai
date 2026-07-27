@@ -15,6 +15,13 @@ class OllamaProvider(BaseProvider):
     """
 
     capabilities: ClassVar[tuple[str, ...]] = ("chat", "local", "embedding")
+    implemented: ClassVar[bool] = False
+    supports_stream: ClassVar[bool] = True
+    supports_tools: ClassVar[bool] = True
+    supports_vision: ClassVar[bool] = False
+    supports_function_calling: ClassVar[bool] = True
+    supports_json: ClassVar[bool] = True
+    context_window: ClassVar[int] = 8192
 
     def __init__(self) -> None:
         self.base_url = settings.ollama_base_url

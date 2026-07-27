@@ -15,6 +15,13 @@ class ClaudeProvider(BaseProvider):
     """
 
     capabilities: ClassVar[tuple[str, ...]] = ("chat", "reasoning", "files")
+    implemented: ClassVar[bool] = False
+    supports_stream: ClassVar[bool] = True
+    supports_tools: ClassVar[bool] = True
+    supports_vision: ClassVar[bool] = True
+    supports_function_calling: ClassVar[bool] = True
+    supports_json: ClassVar[bool] = True
+    context_window: ClassVar[int] = 200000
 
     def __init__(self) -> None:
         self.api_key = settings.claude_api_key

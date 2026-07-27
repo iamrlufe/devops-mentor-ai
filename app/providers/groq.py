@@ -24,6 +24,13 @@ class GroqProvider(BaseProvider):
     """
 
     capabilities: ClassVar[tuple[str, ...]] = ("chat", "reasoning", "tool_calling")
+    implemented: ClassVar[bool] = True
+    supports_stream: ClassVar[bool] = True
+    supports_tools: ClassVar[bool] = True
+    supports_vision: ClassVar[bool] = False
+    supports_function_calling: ClassVar[bool] = True
+    supports_json: ClassVar[bool] = True
+    context_window: ClassVar[int] = 131072
 
     def __init__(self) -> None:
         api_key = settings.groq_api_key

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     memory_max_messages: int = 100
     retriever_provider: str = "qdrant"
     default_agent: str = "teacher"
+    # Where the runtime workspaces are kept.
+    workspace_store: str = "in_memory"
+    # Conversation used when a request names no chat.
+    default_chat_id: str = "default"
 
     # Gemini: the implemented provider, also used for embeddings.
     gemini_api_key: str | None = None

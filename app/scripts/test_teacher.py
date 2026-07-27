@@ -1,12 +1,13 @@
 from app.agents.teacher import DEFAULT_CHAT_ID, TeacherAgent
+from app.memory.in_memory import InMemoryMemoryProvider
 from app.models.chat_message import ROLE_ASSISTANT, ROLE_USER, ChatMessage
+from app.prompting.registry import PromptRegistry
 from app.providers.base import BaseProvider
-from app.providers.factory import ProviderFactory
 from app.providers.gemini import GeminiProvider
 from app.rag.base import Retriever
 from app.rag.empty import EmptyRetriever
-from app.rag.factory import RetrieverFactory
 from app.rag.models import Document
+from app.runtime.context import RuntimeContext
 
 QUESTION = "How do I build a Docker image?"
 PREVIEW_LENGTH = 320
@@ -57,7 +58,13 @@ class MockProvider(BaseProvider):
 class StubRetriever(Retriever):
     """Returns prepared documents, or fails the way a missing index does."""
 
-    def __init__(self, documents=(), error: Exception | None = None):
+    def __init__(
+        self,
+        documents=(),
+        error: Exception | None = None,
+        collection: str = "",
+    ):
+        super().__init__(collection)
         self.documents = list(documents)
         self.error = error
 
@@ -79,14 +86,20 @@ def preview(text: str) -> str:
 
 def show(title: str, retriever: Retriever) -> None:
     mock = MockProvider()
-    ProviderFactory.create = staticmethod(lambda: mock)
-    RetrieverFactory._retriever = retriever
-
-    agent = TeacherAgent()
-    agent.memory.clear(DEFAULT_CHAT_ID)
-
+    # No factory is patched: the agent takes whatever the context holds,
+    # which is exactly how a workspace runs it on another stack.
+    agent = TeacherAgent(
+        RuntimeContext(
+            prompt=PromptRegistry.get(TeacherAgent.prompt),
+            provider=mock,
+            memory=InMemoryMemoryProvider(),
+            retriever=retriever,
+            embedding=None,
+            chat_id=DEFAULT_CHAT_ID,
+        )
+    )
     for role, text in HISTORY:
-        agent.memory.save(DEFAULT_CHAT_ID, role, text)
+        agent.memory.save(agent.memory_key(DEFAULT_CHAT_ID), role, text)
 
     answer = agent.ask(QUESTION)
 
@@ -104,7 +117,6 @@ def show(title: str, retriever: Retriever) -> None:
     print(f"    system_instruction: {preview(system_instruction)}")
     print(f"    contents: {[content.role for content in contents]}")
 
-    agent.memory.clear(DEFAULT_CHAT_ID)
 
 
 show("WITHOUT RAG (nothing found)", EmptyRetriever())
